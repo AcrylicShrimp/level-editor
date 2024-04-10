@@ -1,0 +1,18 @@
+
+# This is a test level definition file for the level editor.
+# Any line starts with `#` is ignored.
+
+name = "First level"
+mode = "grid"
+
+floor {
+  
+}
+
+floor {
+  
+}
+
+floor {
+
+}
