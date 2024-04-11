@@ -1,5 +1,4 @@
-use super::{Mesh, Plane};
-use std::num::NonZeroUsize;
+use super::{BoundingBox, Mesh, Plane};
 
 #[derive(Debug, Clone)]
 pub struct BspNode {
@@ -7,6 +6,7 @@ pub struct BspNode {
     pub meshes_on_plane: Vec<Mesh>,
     pub meshes_on_front: Vec<Mesh>,
     pub meches_on_back: Vec<Mesh>,
-    pub left_node_index: Option<NonZeroUsize>,
-    pub right_node_index: Option<NonZeroUsize>,
+    pub front: Option<Box<BspNode>>,
+    pub back: Option<Box<BspNode>>,
+    pub bounding_box: BoundingBox,
 }

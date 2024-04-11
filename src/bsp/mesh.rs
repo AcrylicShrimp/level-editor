@@ -1,4 +1,4 @@
-use super::{Plane, SurfaceShading, Triangle, TrianglePlaneSide, Vec3, VertexList};
+use super::{BoundingBox, Plane, SurfaceShading, Triangle, TrianglePlaneSide, Vec3, VertexList};
 use std::{collections::HashMap, num::NonZeroU32};
 
 macro_rules! transfer_triangle {
@@ -31,9 +31,26 @@ pub struct Mesh {
     pub hierarch_id: NonZeroU32,
     pub vertex_list: VertexList,
     pub triangles: Vec<Triangle>,
+    pub bounding_box: BoundingBox,
 }
 
 impl Mesh {
+    pub fn new(
+        material_id: NonZeroU32,
+        hierarch_id: NonZeroU32,
+        vertex_list: VertexList,
+        triangles: Vec<Triangle>,
+    ) -> Self {
+        let bounding_box = BoundingBox::compute_from_vertex_list(&vertex_list);
+        Self {
+            material_id,
+            hierarch_id,
+            vertex_list,
+            triangles,
+            bounding_box,
+        }
+    }
+
     pub fn split_by_plane(self, plane: Plane) -> SplittedMesh {
         let mut front_vertex_list = VertexList::new(self.vertex_list.surface_shading);
         let mut back_vertex_list = VertexList::new(self.vertex_list.surface_shading);
@@ -641,24 +658,24 @@ impl Mesh {
             }
         }
 
-        let front = Self {
-            material_id: self.material_id,
-            hierarch_id: self.hierarch_id,
-            vertex_list: front_vertex_list,
-            triangles: front_triangles,
-        };
-        let back = Self {
-            material_id: self.material_id,
-            hierarch_id: self.hierarch_id,
-            vertex_list: back_vertex_list,
-            triangles: back_triangles,
-        };
-        let on_plane = Self {
-            material_id: self.material_id,
-            hierarch_id: self.hierarch_id,
-            vertex_list: on_plane_vertex_list,
-            triangles: on_plane_triangles,
-        };
+        let front = Self::new(
+            self.material_id,
+            self.hierarch_id,
+            front_vertex_list,
+            front_triangles,
+        );
+        let back = Self::new(
+            self.material_id,
+            self.hierarch_id,
+            back_vertex_list,
+            back_triangles,
+        );
+        let on_plane = Self::new(
+            self.material_id,
+            self.hierarch_id,
+            on_plane_vertex_list,
+            on_plane_triangles,
+        );
 
         SplittedMesh {
             front,
