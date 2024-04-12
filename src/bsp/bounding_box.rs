@@ -1,4 +1,11 @@
-use super::{Mesh, Vec3, VertexList};
+use super::{Mesh, Plane, PlaneSide, Vec3, VertexList};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BoundingBoxPlaneSide {
+    Front,
+    Back,
+    Spanning,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoundingBox {
@@ -60,5 +67,57 @@ impl BoundingBox {
             && other.max.y <= self.max.y
             && self.min.z <= other.min.z
             && other.max.z <= self.max.z
+    }
+
+    pub fn plane_side(&self, plane: Plane) -> BoundingBoxPlaneSide {
+        let mut front = 0;
+        let mut back = 0;
+
+        match plane.point_side(Vec3::new(self.min.x, self.min.y, self.min.z)) {
+            PlaneSide::Front => front += 1,
+            PlaneSide::Back => back += 1,
+        }
+
+        match plane.point_side(Vec3::new(self.max.x, self.min.y, self.min.z)) {
+            PlaneSide::Front => front += 1,
+            PlaneSide::Back => back += 1,
+        }
+
+        match plane.point_side(Vec3::new(self.min.x, self.max.y, self.min.z)) {
+            PlaneSide::Front => front += 1,
+            PlaneSide::Back => back += 1,
+        }
+
+        match plane.point_side(Vec3::new(self.min.x, self.min.y, self.max.z)) {
+            PlaneSide::Front => front += 1,
+            PlaneSide::Back => back += 1,
+        }
+
+        match plane.point_side(Vec3::new(self.max.x, self.max.y, self.min.z)) {
+            PlaneSide::Front => front += 1,
+            PlaneSide::Back => back += 1,
+        }
+
+        match plane.point_side(Vec3::new(self.max.x, self.min.y, self.max.z)) {
+            PlaneSide::Front => front += 1,
+            PlaneSide::Back => back += 1,
+        }
+
+        match plane.point_side(Vec3::new(self.min.x, self.max.y, self.max.z)) {
+            PlaneSide::Front => front += 1,
+            PlaneSide::Back => back += 1,
+        }
+
+        match plane.point_side(Vec3::new(self.max.x, self.max.y, self.max.z)) {
+            PlaneSide::Front => front += 1,
+            PlaneSide::Back => back += 1,
+        }
+
+        match (0 < front, 0 < back) {
+            (true, true) => BoundingBoxPlaneSide::Spanning,
+            (true, false) => BoundingBoxPlaneSide::Front,
+            (false, true) => BoundingBoxPlaneSide::Back,
+            (false, false) => unreachable!(),
+        }
     }
 }

@@ -1,4 +1,7 @@
-use super::{BoundingBox, Plane, SurfaceShading, Triangle, TrianglePlaneSide, Vec3, VertexList};
+use super::{
+    BoundingBox, BoundingBoxPlaneSide, Plane, SurfaceShading, Triangle, TrianglePlaneSide, Vec3,
+    VertexList,
+};
 use std::{collections::HashMap, num::NonZeroU32};
 
 macro_rules! transfer_triangle {
@@ -22,7 +25,6 @@ macro_rules! transfer_triangle {
 pub struct SplittedMesh {
     pub front: Mesh,
     pub back: Mesh,
-    pub on_plane: Mesh,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -51,18 +53,43 @@ impl Mesh {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.triangles.is_empty()
+    }
+
     pub fn split_by_plane(self, plane: Plane) -> SplittedMesh {
-        let mut front_vertex_list = VertexList::new(self.vertex_list.surface_shading);
-        let mut back_vertex_list = VertexList::new(self.vertex_list.surface_shading);
-        let mut on_plane_vertex_list = VertexList::new(self.vertex_list.surface_shading);
+        match self.bounding_box.plane_side(plane) {
+            BoundingBoxPlaneSide::Front => {
+                let back = Self::new(
+                    self.material_id,
+                    self.hierarch_id,
+                    VertexList::empty(self.vertex_list.surface_shading),
+                    Vec::new(),
+                );
+
+                return SplittedMesh { front: self, back };
+            }
+            BoundingBoxPlaneSide::Back => {
+                let front = Self::new(
+                    self.material_id,
+                    self.hierarch_id,
+                    VertexList::empty(self.vertex_list.surface_shading),
+                    Vec::new(),
+                );
+
+                return SplittedMesh { front, back: self };
+            }
+            BoundingBoxPlaneSide::Spanning => {}
+        }
+
+        let mut front_vertex_list = VertexList::empty(self.vertex_list.surface_shading);
+        let mut back_vertex_list = VertexList::empty(self.vertex_list.surface_shading);
 
         let mut front_vertex_map = HashMap::new();
         let mut back_vertex_map = HashMap::new();
-        let mut on_plane_vertex_map = HashMap::new();
 
         let mut front_triangles = Vec::new();
         let mut back_triangles = Vec::new();
-        let mut on_plane_triangles = Vec::new();
 
         for triangle in self.triangles {
             match triangle.plane_side(&self.vertex_list, plane) {
@@ -83,15 +110,6 @@ impl Mesh {
                         back_vertex_list
                     );
                     back_triangles.push(triangle);
-                }
-                TrianglePlaneSide::OnPlane => {
-                    let triangle = transfer_triangle!(
-                        triangle,
-                        on_plane_vertex_map,
-                        self.vertex_list,
-                        on_plane_vertex_list
-                    );
-                    on_plane_triangles.push(triangle);
                 }
                 TrianglePlaneSide::Front2Back1 { front, back } => {
                     let front_positions = [
@@ -670,17 +688,7 @@ impl Mesh {
             back_vertex_list,
             back_triangles,
         );
-        let on_plane = Self::new(
-            self.material_id,
-            self.hierarch_id,
-            on_plane_vertex_list,
-            on_plane_triangles,
-        );
 
-        SplittedMesh {
-            front,
-            back,
-            on_plane,
-        }
+        SplittedMesh { front, back }
     }
 }

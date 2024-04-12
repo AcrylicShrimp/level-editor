@@ -17,31 +17,43 @@ pub use vertex_list::*;
 #[derive(Debug, Clone, PartialEq)]
 pub struct BspLimit {
     pub max_depth: Option<usize>,
+    pub min_triangle_count: Option<usize>,
     pub min_size: BoundingBox,
 }
 
 pub fn build_bsp_tree(meshes: Vec<Mesh>, limit: BspLimit) -> BspNode {
-    let mut root_node = BspNode::new_leaf(meshes);
-    build::split(&mut root_node, 0, limit);
-    root_node
+    build::split(BspNode::leaf(meshes), 0, limit)
 }
 
 mod build {
     use super::*;
 
-    pub fn split(bsp_node: &mut BspNode, depth: usize, limit: BspLimit) {
-        if !bsp_node.is_leaf() {
-            return;
-        }
+    pub fn split(bsp_node: BspNode, depth: usize, limit: BspLimit) -> BspNode {
+        let leaf = match bsp_node {
+            BspNode::Leaf(leaf) => leaf,
+            BspNode::Internal(internal) => return BspNode::Internal(internal),
+        };
 
         if let Some(max_depth) = limit.max_depth {
             if max_depth <= depth {
-                return;
+                return BspNode::Leaf(leaf);
             }
         }
 
-        if limit.min_size.contains_bounding_box(&bsp_node.bounding_box) {
-            return;
+        if let Some(min_triangle_count) = limit.min_triangle_count {
+            if leaf
+                .meshes
+                .iter()
+                .map(|mesh| mesh.triangles.len())
+                .sum::<usize>()
+                < min_triangle_count
+            {
+                return BspNode::Leaf(leaf);
+            }
+        }
+
+        if limit.min_size.contains_bounding_box(&leaf.bounding_box) {
+            return BspNode::Leaf(leaf);
         }
 
         todo!()

@@ -25,7 +25,7 @@ pub struct VertexList {
 }
 
 impl VertexList {
-    pub fn new(surface_shading: SurfaceShading) -> Self {
+    pub fn empty(surface_shading: SurfaceShading) -> Self {
         Self {
             surface_shading,
             positions: vec![],
