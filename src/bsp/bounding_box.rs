@@ -51,6 +51,14 @@ impl BoundingBox {
         Self { min, max }
     }
 
+    pub fn size(&self) -> Vec3 {
+        self.max - self.min
+    }
+
+    pub fn center_point(&self) -> Vec3 {
+        (self.min + self.max) / 2.0
+    }
+
     pub fn contains_point(&self, point: Vec3) -> bool {
         self.min.x <= point.x
             && point.x <= self.max.x
