@@ -1,4 +1,5 @@
-use super::{Plane, PlaneSide, VertexList};
+use super::VertexList;
+use lvl_math::{Plane, PlaneSide};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TrianglePlaneSide {

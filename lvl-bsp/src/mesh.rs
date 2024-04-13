@@ -1,7 +1,7 @@
 use super::{
-    BoundingBox, BoundingBoxPlaneSide, Plane, SurfaceShading, Triangle, TrianglePlaneSide, Vec3,
-    VertexList,
+    BoundingBox, BoundingBoxPlaneSide, SurfaceShading, Triangle, TrianglePlaneSide, VertexList,
 };
+use lvl_math::{Plane, Vec3};
 use std::{collections::HashMap, num::NonZeroU32};
 
 macro_rules! transfer_triangle {

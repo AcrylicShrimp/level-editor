@@ -1,4 +1,5 @@
-use super::{Mesh, Plane, PlaneSide, Vec3, VertexList};
+use super::{Mesh, VertexList};
+use lvl_math::{Plane, PlaneSide, Vec3};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BoundingBoxPlaneSide {

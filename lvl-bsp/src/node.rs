@@ -1,4 +1,5 @@
-use super::{BoundingBox, Mesh, Plane};
+use super::{BoundingBox, Mesh};
+use lvl_math::Plane;
 
 #[derive(Debug, Clone)]
 pub enum BspNode {

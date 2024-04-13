@@ -1,4 +1,4 @@
-use super::Vec3;
+use lvl_math::Vec3;
 
 /// Indicates how normals and tangents are calculated for the mesh, when splitting it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
