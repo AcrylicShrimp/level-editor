@@ -1,9 +1,15 @@
-use super::Context;
-use crate::gfx::{ClearMode, Frame, RenderPassTarget};
+use crate::{
+    context::{driver::Driver, Context},
+    gfx::{ClearMode, Frame, RenderPassTarget},
+};
 use wgpu::{Color, TextureView};
 use winit::window::Window;
 
-pub fn render(window: &Window, ctx: &Context) {
+pub fn render(window: &Window, ctx: &Context, driver: &mut Option<Box<dyn Driver>>) {
+    if let Some(driver) = driver {
+        driver.on_before_render(&ctx, window);
+    }
+
     // TODO: render frame here
 
     // update_camera_transform_buffer_system.run_now(&self.ctx.world());
@@ -21,6 +27,10 @@ pub fn render(window: &Window, ctx: &Context) {
 
     window.pre_present_notify();
     surface_texture.present();
+
+    if let Some(driver) = driver {
+        driver.on_after_render(&ctx, window);
+    }
 }
 
 fn render_pass_stage_opaque(ctx: &Context, surface_texture_view: &TextureView, frame: &mut Frame) {

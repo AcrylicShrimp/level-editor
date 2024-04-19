@@ -2,9 +2,9 @@ use super::Frame;
 use std::cell::RefCell;
 use thiserror::Error;
 use wgpu::{
-    Adapter, Backend, Backends, CommandEncoderDescriptor, CompositeAlphaMode, Device,
-    DeviceDescriptor, DeviceType, Features, Instance, InstanceDescriptor, PresentMode, Queue,
-    Surface, SurfaceConfiguration, SurfaceError, SurfaceTexture, TextureUsages,
+    Adapter, Backend, Backends, CommandEncoderDescriptor, Device, DeviceDescriptor, DeviceType,
+    Features, Instance, InstanceDescriptor, Queue, Surface, SurfaceConfiguration, SurfaceError,
+    SurfaceTexture, TextureUsages,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -29,7 +29,7 @@ pub struct GfxContext<'window> {
 }
 
 impl<'window> GfxContext<'window> {
-    pub async fn new(window: &'window Window) -> Result<Self, GfxContextCreationError> {
+    pub(crate) async fn new(window: &'window Window) -> Result<Self, GfxContextCreationError> {
         let instance = Instance::new(InstanceDescriptor::default());
         let surface = instance.create_surface(window)?;
         let adapters = instance.enumerate_adapters(Backends::all());

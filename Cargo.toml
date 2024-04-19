@@ -7,13 +7,12 @@ edition = "2021"
 
 [dependencies]
 lvl-bsp = { path = "lvl-bsp" }
+lvl-core = { path = "lvl-core" }
 lvl-math = { path = "lvl-math" }
 lvl-pmx = { path = "lvl-pmx" }
-pollster = "0.3"
 thiserror = "1"
 wgpu = "0.19"
 winit = "0.29"
-zerocopy = { version = "0.7", features = ["derive"] }
 
 [workspace]
-members = ["lvl-bsp", "lvl-math", "lvl-pmx"]
+members = ["lvl-bsp", "lvl-core", "lvl-math", "lvl-pmx"]

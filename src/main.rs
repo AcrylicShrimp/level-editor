@@ -1,25 +1,17 @@
-mod context;
-mod gfx;
-mod looper;
-
-use looper::{
-    loop_window::{LoopWindow, LoopWindowConfig},
-    Looper, LooperMode, TargetFps,
+use lvl_core::{
+    launch_core,
+    looper::{loop_window::LoopWindowConfig, LooperMode, TargetFps},
 };
-use pollster::FutureExt;
 
 fn main() {
-    let window = LoopWindow::new(LoopWindowConfig {
+    let window_config = LoopWindowConfig {
         title: "Level Editor".to_owned(),
         width: 800,
         height: 600,
         resizable: true,
-    })
-    .unwrap();
-    let (event_loop, window) = window.into();
+    };
+    let looper_mode = LooperMode::Poll;
+    let target_fps = TargetFps::VSync;
 
-    let looper = Looper::new(&window).block_on().unwrap();
-    looper
-        .run(event_loop, &window, LooperMode::Poll, TargetFps::VSync)
-        .unwrap();
+    launch_core(window_config, looper_mode, target_fps, None);
 }

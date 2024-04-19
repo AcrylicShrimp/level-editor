@@ -654,13 +654,12 @@ name = "level-editor"
 version = "0.1.0"
 dependencies = [
  "lvl-bsp",
+ "lvl-core",
  "lvl-math",
  "lvl-pmx",
- "pollster",
  "thiserror",
  "wgpu",
  "winit",
- "zerocopy",
 ]
 
 [[package]]
@@ -728,6 +727,17 @@ version = "0.1.0"
 dependencies = [
  "lvl-math",
  "zerocopy",
+]
+
+[[package]]
+name = "lvl-core"
+version = "0.1.0"
+dependencies = [
+ "lvl-math",
+ "pollster",
+ "thiserror",
+ "wgpu",
+ "winit",
 ]
 
 [[package]]

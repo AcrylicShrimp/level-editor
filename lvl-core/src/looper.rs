@@ -2,7 +2,7 @@ pub mod loop_window;
 pub mod vsync;
 
 use crate::{
-    context::{phase, Context},
+    context::{driver::Driver, phases, Context},
     gfx::GfxContext,
     looper::vsync::TargetFrameInterval,
 };
@@ -60,6 +60,7 @@ impl Default for TargetFps {
 
 pub struct Looper<'window> {
     ctx: Context<'window>,
+    driver: Option<Box<dyn Driver>>,
 }
 
 #[derive(Debug, Clone, Hash)]
@@ -71,7 +72,10 @@ pub struct LooperConfig {
 }
 
 impl<'window> Looper<'window> {
-    pub async fn new(window: &'window Window) -> Result<Self, LooperCreationError> {
+    pub async fn new(
+        window: &'window Window,
+        mut driver: Option<Box<dyn Driver>>,
+    ) -> Result<Self, LooperCreationError> {
         let gfx_ctx = GfxContext::new(window).await?;
         let ctx = Context::new(gfx_ctx);
 
@@ -83,11 +87,13 @@ impl<'window> Looper<'window> {
             ctx.gfx_ctx().resize(physical_size);
         }
 
-        Ok(Self { ctx })
+        driver.as_mut().map(|driver| driver.on_init(&ctx, window));
+
+        Ok(Self { ctx, driver })
     }
 
     pub fn run(
-        self,
+        mut self,
         event_loop: EventLoop<()>,
         window: &'window Window,
         looper_mode: LooperMode,
@@ -144,6 +150,8 @@ impl<'window> Looper<'window> {
                 //     input_mgr.poll();
                 // }
 
+                phases::update::update(&window, &self.ctx, &mut self.driver);
+                phases::late_update::late_update(&window, &self.ctx, &mut self.driver);
                 // self.ctx.event_mgr().dispatch(&event_types::Update);
 
                 // make_ui_scaler_dirty.run_now(&self.ctx.world());
@@ -166,7 +174,7 @@ impl<'window> Looper<'window> {
 
                 // self.ctx.event_mgr().dispatch(&event_types::LateUpdate);
 
-                phase::render(&window, &self.ctx);
+                phases::render::render(&window, &self.ctx, &mut self.driver);
                 return;
             }
             Event::WindowEvent {
@@ -281,6 +289,11 @@ impl<'window> Looper<'window> {
                 window_id: id,
             } if id == window_id => {
                 target.exit();
+
+                if let Some(driver) = self.driver.as_mut() {
+                    driver.on_finish(&self.ctx, window);
+                }
+
                 return;
             }
             _ => return,
