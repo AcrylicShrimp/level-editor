@@ -1,13 +1,19 @@
 use crate::{
     context::{driver::Driver, Context},
     gfx::{ClearMode, Frame, RenderPassTarget},
+    scene::Scene,
 };
 use wgpu::{Color, TextureView};
 use winit::window::Window;
 
-pub fn render(window: &Window, ctx: &Context, driver: &mut Option<Box<dyn Driver>>) {
+pub fn render(
+    window: &Window,
+    ctx: &Context,
+    scene: &mut Scene,
+    driver: &mut Option<Box<dyn Driver>>,
+) {
     if let Some(driver) = driver {
-        driver.on_before_render(&ctx, window);
+        driver.on_before_render(&ctx, window, scene);
     }
 
     // TODO: render frame here
@@ -29,7 +35,7 @@ pub fn render(window: &Window, ctx: &Context, driver: &mut Option<Box<dyn Driver
     surface_texture.present();
 
     if let Some(driver) = driver {
-        driver.on_after_render(&ctx, window);
+        driver.on_after_render(&ctx, window, scene);
     }
 }
 

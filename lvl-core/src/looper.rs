@@ -5,6 +5,7 @@ use crate::{
     context::{driver::Driver, phases, Context},
     gfx::GfxContext,
     looper::vsync::TargetFrameInterval,
+    scene::Scene,
 };
 use std::{num::NonZeroU32, time::Instant};
 use thiserror::Error;
@@ -74,7 +75,7 @@ pub struct LooperConfig {
 impl<'window> Looper<'window> {
     pub async fn new(
         window: &'window Window,
-        mut driver: Option<Box<dyn Driver>>,
+        driver: Option<Box<dyn Driver>>,
     ) -> Result<Self, LooperCreationError> {
         let gfx_ctx = GfxContext::new(window).await?;
         let ctx = Context::new(gfx_ctx);
@@ -86,8 +87,6 @@ impl<'window> Looper<'window> {
             // screen_mgr.update_scale_factor(scale_factor, physical_size);
             ctx.gfx_ctx().resize(physical_size);
         }
-
-        driver.as_mut().map(|driver| driver.on_init(&ctx, window));
 
         Ok(Self { ctx, driver })
     }
@@ -118,8 +117,13 @@ impl<'window> Looper<'window> {
             window,
         );
         let mut last_frame_time = Instant::now();
+        let mut scene = Scene::new(&self.ctx, window);
 
-        event_loop.run(move |event, target| match event {
+        self.driver
+            .as_mut()
+            .map(|driver| driver.on_init(&self.ctx, window, &mut scene));
+
+        event_loop.run(|event, target| match event {
             Event::NewEvents(cause) if cause == StartCause::Poll => {
                 if !window_occluded && !window_too_small {
                     window.request_redraw();
@@ -150,8 +154,8 @@ impl<'window> Looper<'window> {
                 //     input_mgr.poll();
                 // }
 
-                phases::update::update(&window, &self.ctx, &mut self.driver);
-                phases::late_update::late_update(&window, &self.ctx, &mut self.driver);
+                phases::update::update(&window, &self.ctx, &mut scene, &mut self.driver);
+                phases::late_update::late_update(&window, &self.ctx, &mut scene, &mut self.driver);
                 // self.ctx.event_mgr().dispatch(&event_types::Update);
 
                 // make_ui_scaler_dirty.run_now(&self.ctx.world());
@@ -161,20 +165,8 @@ impl<'window> Looper<'window> {
 
                 // self.ctx.ui_event_mgr_mut().handle_mouse_move();
 
-                // {
-                //     let world = self.ctx.world();
-                //     let mut object_mgr = self.ctx.object_mgr_mut();
-                //     let object_hierarchy = object_mgr.object_hierarchy_mut();
-
-                //     object_hierarchy.copy_dirty_to_current_frame();
-
-                //     let transforms = world.read_component::<Transform>();
-                //     object_hierarchy.update_object_matrices(|entity| transforms.get(entity));
-                // }
-
-                // self.ctx.event_mgr().dispatch(&event_types::LateUpdate);
-
-                phases::render::render(&window, &self.ctx, &mut self.driver);
+                scene.prepare_render();
+                phases::render::render(&window, &self.ctx, &mut scene, &mut self.driver);
                 return;
             }
             Event::WindowEvent {
@@ -291,7 +283,7 @@ impl<'window> Looper<'window> {
                 target.exit();
 
                 if let Some(driver) = self.driver.as_mut() {
-                    driver.on_finish(&self.ctx, window);
+                    driver.on_finish(&self.ctx, window, &mut scene);
                 }
 
                 return;

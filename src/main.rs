@@ -1,3 +1,7 @@
+mod driver_impl;
+mod object;
+
+use driver_impl::DriverImpl;
 use lvl_core::{
     launch_core,
     looper::{loop_window::LoopWindowConfig, LooperMode, TargetFps},
@@ -13,5 +17,10 @@ fn main() {
     let looper_mode = LooperMode::Poll;
     let target_fps = TargetFps::VSync;
 
-    launch_core(window_config, looper_mode, target_fps, None);
+    launch_core(
+        window_config,
+        looper_mode,
+        target_fps,
+        Some(Box::new(DriverImpl::new())),
+    );
 }

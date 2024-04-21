@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bitvec = "1"
 lvl-math = { path = "../lvl-math" }
 pollster = "0.3"
 thiserror = "1"
