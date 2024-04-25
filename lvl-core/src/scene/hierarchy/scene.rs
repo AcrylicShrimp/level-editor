@@ -1,6 +1,7 @@
 use super::{
     ComponentIdAllocator, ControllerStorage, EventReceiverStorage, HierarchyStorage,
-    ObjectIdAllocator, ObjectStorage, SceneActionItem, SceneActionResult, SceneProxy,
+    ObjectIdAllocator, ObjectStorage, ReadOnlySceneProxy, SceneActionItem, SceneActionResult,
+    SceneProxy,
 };
 use crate::context::Context;
 use winit::window::Window;
@@ -28,6 +29,17 @@ impl<'ctx, 'window: 'ctx> Scene<'ctx, 'window> {
             controller_storage: ControllerStorage::new(),
             event_receiver_storage: EventReceiverStorage::new(),
         }
+    }
+
+    pub fn read_only_proxy(&mut self) -> ReadOnlySceneProxy {
+        ReadOnlySceneProxy::new(SceneProxy::new(
+            self.context,
+            self.window,
+            &mut self.object_id_allocator,
+            &mut self.component_id_allocator,
+            &mut self.object_storage,
+            &mut self.hierarchy_storage,
+        ))
     }
 
     pub fn with_proxy<R>(&mut self, f: impl FnOnce(&mut SceneProxy) -> R) -> R {

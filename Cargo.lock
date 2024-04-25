@@ -113,6 +113,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1fdabc7756949593fe60f30ec81974b613357de856987752631dea1e3394c80"
 
 [[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -675,6 +684,7 @@ dependencies = [
  "lvl-core",
  "lvl-math",
  "lvl-pmx",
+ "lvl-resource",
  "thiserror",
  "wgpu",
  "winit",
@@ -751,9 +761,12 @@ dependencies = [
 name = "lvl-core"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "bitvec",
  "lvl-math",
+ "lvl-resource",
  "pollster",
+ "serde",
  "thiserror",
  "wgpu",
  "winit",
@@ -771,6 +784,21 @@ name = "lvl-pmx"
 version = "0.1.0"
 dependencies = [
  "thiserror",
+]
+
+[[package]]
+name = "lvl-resource"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "lvl-resource-compiler"
+version = "0.1.0"
+dependencies = [
+ "lvl-math",
+ "lvl-resource",
 ]
 
 [[package]]

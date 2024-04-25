@@ -10,9 +10,17 @@ lvl-bsp = { path = "lvl-bsp" }
 lvl-core = { path = "lvl-core" }
 lvl-math = { path = "lvl-math" }
 lvl-pmx = { path = "lvl-pmx" }
+lvl-resource = { path = "lvl-resource" }
 thiserror = "1"
 wgpu = "0.19"
 winit = "0.29"
 
 [workspace]
-members = ["lvl-bsp", "lvl-core", "lvl-math", "lvl-pmx"]
+members = [
+  "lvl-bsp",
+  "lvl-core",
+  "lvl-math",
+  "lvl-pmx",
+  "lvl-resource",
+  "lvl-resource-compiler",
+]

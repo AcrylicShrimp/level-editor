@@ -7,7 +7,7 @@ pub struct AnyComponent {
 }
 
 impl AnyComponent {
-    pub fn new<T>(id: ComponentId, inner: T) -> Self
+    pub(crate) fn new<T>(id: ComponentId, inner: T) -> Self
     where
         T: Component,
     {

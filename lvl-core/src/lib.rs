@@ -1,6 +1,7 @@
 pub mod context;
 pub mod gfx;
 pub mod looper;
+pub mod resource;
 pub mod scene;
 
 use context::driver::Driver;
