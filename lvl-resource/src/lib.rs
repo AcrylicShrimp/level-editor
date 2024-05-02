@@ -1,10 +1,12 @@
 mod material_source;
 mod mesh_source;
+mod model_source;
 mod shader_source;
 mod texture_source;
 
 pub use material_source::*;
 pub use mesh_source::*;
+pub use model_source::*;
 pub use shader_source::*;
 pub use texture_source::*;
 
@@ -75,15 +77,31 @@ pub struct Resource {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ResourceKind {
+    Material(MaterialSource),
     Mesh(MeshSource),
+    Model(ModelSource),
     Shader(ShaderSource),
     Texture(TextureSource),
 }
 
 impl ResourceKind {
+    pub fn as_material_source(&self) -> Option<&MaterialSource> {
+        match self {
+            Self::Material(material) => Some(material),
+            _ => None,
+        }
+    }
+
     pub fn as_mesh_source(&self) -> Option<&MeshSource> {
         match self {
             Self::Mesh(mesh) => Some(mesh),
+            _ => None,
+        }
+    }
+
+    pub fn as_model_source(&self) -> Option<&ModelSource> {
+        match self {
+            Self::Model(model) => Some(model),
             _ => None,
         }
     }

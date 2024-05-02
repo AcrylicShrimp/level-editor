@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use crate::{FromResourceKind, ResourceKind};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MaterialSource {
@@ -16,6 +17,15 @@ impl MaterialSource {
     }
 }
 
+impl FromResourceKind for MaterialSource {
+    fn from(kind: &ResourceKind) -> Option<&Self> {
+        match kind {
+            ResourceKind::Material(material) => Some(material),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MaterialProperty {
     pub name: String,
@@ -25,10 +35,4 @@ pub struct MaterialProperty {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MaterialPropertyValue {
     Texture { texture_name: String },
-    Dynamic(MaterialPropertyValueDynamic),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct MaterialPropertyValueDynamic {
-    pub key: String,
 }

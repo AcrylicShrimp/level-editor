@@ -48,4 +48,6 @@ pub enum MeshSourceElementKind {
     TexCoord(u8),
     /// Vec3
     Tangent,
+    /// vec4
+    Additional(u8),
 }

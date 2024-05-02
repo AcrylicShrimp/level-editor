@@ -1,10 +1,15 @@
 [package]
 name = "lvl-resource-compiler"
+description = "resource compiler for level editor"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.82"
+clap = "4"
+image = "0.25.1"
 lvl-math = { path = "../lvl-math" }
+lvl-pmx = { path = "../lvl-pmx" }
 lvl-resource = { path = "../lvl-resource" }

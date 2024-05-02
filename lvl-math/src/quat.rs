@@ -1,4 +1,5 @@
 use super::{Mat4, Vec3};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
     ops::{Mul, MulAssign, Neg},
@@ -6,7 +7,7 @@ use std::{
 use zerocopy::AsBytes;
 
 #[repr(C)]
-#[derive(AsBytes, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, AsBytes, Debug, Clone, Copy, PartialEq)]
 pub struct Quat {
     pub x: f32,
     pub y: f32,

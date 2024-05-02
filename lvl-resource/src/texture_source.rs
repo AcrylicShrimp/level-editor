@@ -1,6 +1,5 @@
 use crate::{FromResourceKind, ResourceKind};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TextureSource {
@@ -49,12 +48,6 @@ pub struct TextureElement {
     pub wrapping_mode_v: TextureElementWrappingMode,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TextureElementSize {
-    pub width: u16,
-    pub height: u16,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum TextureElementSource {
     Image(TextureElementSourceImage),
@@ -63,9 +56,30 @@ pub enum TextureElementSource {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TextureElementSourceImage {
-    /// Relative to the resource file.
-    pub path: PathBuf,
+    /// Raw image data.
+    pub data: Vec<u8>,
+    pub image_encoding: TextureElementImageEncoding,
     pub image_format: TextureElementImageFormat,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TextureElementImageEncoding {
+    Png,
+    Jpeg,
+    Bmp,
+    Tga,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TextureElementImageFormat {
+    R8,
+    R16,
+    RGB8,
+    RGB16,
+    RGB32F,
+    RGBA8,
+    RGBA16,
+    RGBA32F,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -74,17 +88,10 @@ pub struct TextureElementSourceRaw {
     pub data: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum TextureElementImageFormat {
-    R8,
-    R16,
-    R32,
-    RGB8,
-    RGB16,
-    RGB32,
-    RGBA8,
-    RGBA16,
-    RGBA32,
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TextureElementSize {
+    pub width: u16,
+    pub height: u16,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

@@ -1,4 +1,5 @@
 use super::{Vec2, Vec4};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
@@ -6,7 +7,7 @@ use std::{
 use zerocopy::AsBytes;
 
 #[repr(C)]
-#[derive(AsBytes, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, AsBytes, Debug, Clone, Copy, PartialEq)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,

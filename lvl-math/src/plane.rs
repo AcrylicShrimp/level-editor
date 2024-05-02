@@ -1,15 +1,16 @@
 use super::Vec3;
+use serde::{Deserialize, Serialize};
 use zerocopy::AsBytes;
 
 #[repr(C)]
-#[derive(AsBytes, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, AsBytes, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PlaneSide {
     Front,
     Back,
 }
 
 #[repr(C)]
-#[derive(AsBytes, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, AsBytes, Debug, Clone, Copy, PartialEq)]
 pub struct Plane {
     pub normal: Vec3,
     pub distance: f32,
