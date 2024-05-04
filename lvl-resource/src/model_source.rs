@@ -32,7 +32,7 @@ pub struct ModelElement {
     pub name: String,
     pub parent_index: Option<u32>,
     pub transform: ModelTransform,
-    pub visible_part: Option<ModelVisiblePart>,
+    pub visible_parts: Vec<ModelVisiblePart>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

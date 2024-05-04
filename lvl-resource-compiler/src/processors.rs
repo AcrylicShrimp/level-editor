@@ -6,10 +6,12 @@ pub use texture_processor::*;
 
 use anyhow::Error as AnyError;
 use lvl_resource::Resource;
+use serde::Deserialize;
 use std::path::Path;
 
 pub trait Processor {
-    fn new() -> Self;
-    fn extension(&self) -> &'static [&'static str];
-    fn process(&self, file: &Path) -> Result<Vec<Resource>, AnyError>;
+    type Metadata: for<'de> Deserialize<'de>;
+
+    fn extension() -> &'static [&'static str];
+    fn process(file: &Path, metadata: Option<&Self::Metadata>) -> Result<Vec<Resource>, AnyError>;
 }

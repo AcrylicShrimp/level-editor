@@ -1,6 +1,7 @@
+use crate::{FromResourceKind, ResourceKind};
+use lvl_math::{Vec2, Vec3, Vec4};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use crate::{FromResourceKind, ResourceKind};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MaterialSource {
@@ -9,10 +10,10 @@ pub struct MaterialSource {
 }
 
 impl MaterialSource {
-    pub fn new(shader_name: String, properties: BTreeMap<String, MaterialProperty>) -> Self {
+    pub fn new(shader_name: String, properties: Vec<MaterialProperty>) -> Self {
         Self {
             shader_name,
-            properties,
+            properties: BTreeMap::from_iter(properties.into_iter().map(|p| (p.name.clone(), p))),
         }
     }
 }
@@ -35,4 +36,13 @@ pub struct MaterialProperty {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MaterialPropertyValue {
     Texture { texture_name: String },
+    Uniform(MaterialPropertyValueUniformKind),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum MaterialPropertyValueUniformKind {
+    Float(f32),
+    Vec2(Vec2),
+    Vec3(Vec3),
+    Vec4(Vec4),
 }

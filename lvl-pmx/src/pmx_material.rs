@@ -42,7 +42,10 @@ pub struct PmxMaterial {
     pub environment_blend_mode: PmxMaterialEnvironmentBlendMode,
     pub toon_mode: PmxMaterialToonMode,
     pub metadata: String,
-    /// Number of surfaces that use this material. All surfaces use exactly one material.
+    /// Number of **indices** that use this material. All surfaces use exactly one material.
+    /// Note that it is not the number of **surfaces**; instead it is the number of **indices** that use this material.
+    /// So you may divide it by 3 to get the number of **triangles**.
+    ///
     /// Surfaces are sorted by material index, so surfaces with the same material index are contiguous.
     /// A span of surfaces using material at index `N` can be computed as `sum(surface_counts[0..N])..sum(surface_counts[0..N+1])`.
     pub surface_count: u32,

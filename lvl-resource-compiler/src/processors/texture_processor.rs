@@ -1,70 +1,62 @@
 use super::Processor;
 use anyhow::{anyhow, Error as AnyError};
-use image::{io::Reader as ImageReader, DynamicImage, ImageFormat};
+use image::io::Reader as ImageReader;
 use lvl_resource::{
-    Resource, TextureElement, TextureElementImageEncoding, TextureElementImageFormat,
-    TextureElementSize,
+    Resource, ResourceKind, TextureElement, TextureElementSamplingMode, TextureElementSize,
+    TextureElementTextureFormat, TextureElementWrappingMode, TextureKind, TextureSource,
 };
+use serde::Deserialize;
 use std::path::Path;
 
-pub struct TextureProcessor {}
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
+pub struct TextureMetadata {
+    pub texture_format: TextureElementTextureFormat,
+    pub sampling_mode: Option<TextureElementSamplingMode>,
+    pub wrapping_mode_u: Option<TextureElementWrappingMode>,
+    pub wrapping_mode_v: Option<TextureElementWrappingMode>,
+}
+
+pub struct TextureProcessor;
 
 impl Processor for TextureProcessor {
-    fn new() -> Self {
-        Self {}
-    }
+    type Metadata = TextureMetadata;
 
-    fn extension(&self) -> &'static [&'static str] {
+    fn extension() -> &'static [&'static str] {
         &["png", "jpg", "jpeg", "bmp", "tga"]
     }
 
-    fn process(&self, file: &Path) -> Result<Vec<Resource>, AnyError> {
-        let image = ImageReader::open(file)?.with_guessed_format()?;
-        let format = match image.format() {
-            Some(format) => format,
-            None => return Err(anyhow!("image format not found")),
+    fn process(file: &Path, metadata: Option<&Self::Metadata>) -> Result<Vec<Resource>, AnyError> {
+        let name = file.file_stem().unwrap().to_string_lossy().to_string();
+        let metadata = match metadata {
+            Some(metadata) => metadata,
+            None => {
+                return Err(anyhow!("metadata not found"));
+            }
         };
+        let element = make_texture_element(
+            file,
+            metadata.texture_format,
+            metadata.sampling_mode,
+            metadata.wrapping_mode_u,
+            metadata.wrapping_mode_v,
+        )?;
 
-        let encoding = match format {
-            ImageFormat::Png => TextureElementImageEncoding::Png,
-            ImageFormat::Jpeg => TextureElementImageEncoding::Jpeg,
-            ImageFormat::Bmp => TextureElementImageEncoding::Bmp,
-            ImageFormat::Tga => TextureElementImageEncoding::Tga,
-            _ => return Err(anyhow!("unsupported image encoding")),
-        };
-
-        // let image_data = format.into_raw_rgba8();
-
-        todo!()
+        Ok(vec![Resource {
+            name,
+            kind: ResourceKind::Texture(TextureSource::new(TextureKind::Single(element))),
+        }])
     }
 }
 
-fn make_texture_element(file: &Path) -> Result<TextureElement, AnyError> {
+fn make_texture_element(
+    file: &Path,
+    texture_format: TextureElementTextureFormat,
+    sampling_mode: Option<TextureElementSamplingMode>,
+    wrapping_mode_u: Option<TextureElementWrappingMode>,
+    wrapping_mode_v: Option<TextureElementWrappingMode>,
+) -> Result<TextureElement, AnyError> {
     let image = ImageReader::open(file)?.with_guessed_format()?;
-    let format = match image.format() {
-        Some(format) => format,
-        None => return Err(anyhow!("image format not found")),
-    };
     let decoded = image.decode()?;
-
-    let encoding = match format {
-        ImageFormat::Png => TextureElementImageEncoding::Png,
-        ImageFormat::Jpeg => TextureElementImageEncoding::Jpeg,
-        ImageFormat::Bmp => TextureElementImageEncoding::Bmp,
-        ImageFormat::Tga => TextureElementImageEncoding::Tga,
-        _ => return Err(anyhow!("unsupported image encoding")),
-    };
-    let format = match decoded {
-        DynamicImage::ImageLuma8(_) => TextureElementImageFormat::R8,
-        DynamicImage::ImageRgb8(_) => TextureElementImageFormat::RGB8,
-        DynamicImage::ImageRgba8(_) => TextureElementImageFormat::RGBA8,
-        DynamicImage::ImageLuma16(_) => TextureElementImageFormat::R16,
-        DynamicImage::ImageRgb16(_) => TextureElementImageFormat::RGB16,
-        DynamicImage::ImageRgba16(_) => TextureElementImageFormat::RGBA16,
-        DynamicImage::ImageRgb32F(_) => TextureElementImageFormat::RGB32F,
-        DynamicImage::ImageRgba32F(_) => TextureElementImageFormat::RGBA32F,
-        _ => return Err(anyhow!("unsupported image format")),
-    };
 
     let width = decoded.width();
     let height = decoded.height();
@@ -77,8 +69,20 @@ fn make_texture_element(file: &Path) -> Result<TextureElement, AnyError> {
         width: width as u16,
         height: height as u16,
     };
+    let sampling_mode = sampling_mode.unwrap_or(TextureElementSamplingMode::Bilinear);
+    let wrapping_mode_u = wrapping_mode_u.unwrap_or(TextureElementWrappingMode::Clamp);
+    let wrapping_mode_v = wrapping_mode_v.unwrap_or(TextureElementWrappingMode::Clamp);
 
-    // TODO: we need to get texture format and sampling/wrapping modes somehow
+    let data = match texture_format {
+        TextureElementTextureFormat::RGBA8Unorm => decoded.into_rgba8().to_vec(),
+    };
 
-    todo!()
+    Ok(TextureElement {
+        data,
+        size,
+        texture_format,
+        sampling_mode,
+        wrapping_mode_u,
+        wrapping_mode_v,
+    })
 }

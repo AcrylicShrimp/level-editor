@@ -3,20 +3,23 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MeshSource {
-    vertex_data: Vec<f32>,
+    vertex_data: Vec<u8>,
     index_data: Vec<u8>,
-    elements: Vec<MeshSourceElement>,
+    index_kind: MeshIndexKind,
+    elements: Vec<MeshElement>,
 }
 
 impl MeshSource {
     pub fn new(
-        vertex_data: Vec<f32>,
+        vertex_data: Vec<u8>,
         index_data: Vec<u8>,
-        elements: Vec<MeshSourceElement>,
+        index_kind: MeshIndexKind,
+        elements: Vec<MeshElement>,
     ) -> Self {
         Self {
             vertex_data,
             index_data,
+            index_kind,
             elements,
         }
     }
@@ -31,15 +34,25 @@ impl FromResourceKind for MeshSource {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MeshIndexKind {
+    /// u8
+    U8,
+    /// u16
+    U16,
+    /// u32
+    U32,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MeshSourceElement {
+pub struct MeshElement {
     pub name: String,
-    pub kind: MeshSourceElementKind,
+    pub kind: MeshElementKind,
     pub offset: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MeshSourceElementKind {
+pub enum MeshElementKind {
     /// Vec3
     Position,
     /// Vec3

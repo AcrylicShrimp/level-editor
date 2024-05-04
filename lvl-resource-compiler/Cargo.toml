@@ -7,9 +7,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.82"
+anyhow = "1"
+bincode = "1"
 clap = "4"
-image = "0.25.1"
+env_logger = "0.11"
+image = "0.25"
+log = "0.4"
 lvl-math = { path = "../lvl-math" }
 lvl-pmx = { path = "../lvl-pmx" }
 lvl-resource = { path = "../lvl-resource" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+zerocopy = { version = "0.7" }
