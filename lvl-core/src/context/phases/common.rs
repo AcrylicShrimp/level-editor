@@ -1,11 +1,11 @@
-use crate::scene::{components::Camera, ObjectId, ReadOnlySceneProxy};
+use crate::scene::{components::Camera, ObjectId, SceneProxy};
 
-pub struct CameraObject<'scene> {
+struct CameraObject<'scene> {
     pub object_id: ObjectId,
     pub camera: &'scene Camera,
 }
 
-pub fn get_all_cameras<'scene>(scene: &'scene ReadOnlySceneProxy) -> Vec<CameraObject<'scene>> {
+pub fn get_all_cameras(scene: &SceneProxy) -> Vec<ObjectId> {
     let mut camera_objects = match scene.find_object_ids_by_component_type::<Camera>() {
         Some(object_ids) => object_ids
             .iter()
@@ -25,4 +25,7 @@ pub fn get_all_cameras<'scene>(scene: &'scene ReadOnlySceneProxy) -> Vec<CameraO
 
     camera_objects.sort_unstable_by_key(|camera_object| camera_object.camera.order);
     camera_objects
+        .iter()
+        .map(|camera_object| camera_object.object_id)
+        .collect()
 }

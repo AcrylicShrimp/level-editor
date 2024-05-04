@@ -3,12 +3,12 @@ mod parse;
 mod pmx_bone;
 mod pmx_display;
 mod pmx_header;
+mod pmx_indices;
 mod pmx_joint;
 mod pmx_material;
 mod pmx_morph;
 mod pmx_primitives;
 mod pmx_rigidbody;
-mod pmx_surface;
 mod pmx_texture;
 mod pmx_vertex;
 mod primitives;
@@ -18,11 +18,11 @@ use parse::Parse;
 pub use pmx_bone::PmxBone;
 pub use pmx_display::PmxDisplay;
 pub use pmx_header::PmxHeader;
+pub use pmx_indices::PmxIndices;
 pub use pmx_joint::PmxJoint;
 pub use pmx_material::PmxMaterial;
 pub use pmx_morph::PmxMorph;
 pub use pmx_rigidbody::PmxRigidbody;
-pub use pmx_surface::PmxSurface;
 pub use pmx_texture::PmxTexture;
 pub use pmx_vertex::PmxVertex;
 use std::fmt::Display;
@@ -35,7 +35,7 @@ pub enum PmxParseError {
     #[error("failed to parse PMX vertex: {0}")]
     PmxVertexParseError(#[from] pmx_vertex::PmxVertexParseError),
     #[error("failed to parse PMX surface: {0}")]
-    PmxSurfaceParseError(#[from] pmx_surface::PmxSurfaceParseError),
+    PmxSurfaceParseError(#[from] pmx_indices::PmxIndicesParseError),
     #[error("failed to parse PMX texture: {0}")]
     PmxTextureParseError(#[from] pmx_texture::PmxTextureParseError),
     #[error("failed to parse PMX material: {0}")]
@@ -56,7 +56,7 @@ pub enum PmxParseError {
 pub struct Pmx {
     pub header: PmxHeader,
     pub vertices: Vec<PmxVertex>,
-    pub surfaces: Vec<PmxSurface>,
+    pub indices: PmxIndices,
     pub textures: Vec<PmxTexture>,
     pub materials: Vec<PmxMaterial>,
     pub bones: Vec<PmxBone>,
@@ -72,7 +72,7 @@ impl Pmx {
 
         let header = PmxHeader::parse(&mut cursor)?;
         let vertices = Vec::parse(&header.config, &mut cursor)?;
-        let surfaces = Vec::parse(&header.config, &mut cursor)?;
+        let indices = PmxIndices::parse(&header.config, &mut cursor)?;
         let textures = Vec::parse(&header.config, &mut cursor)?;
         let materials = Vec::parse(&header.config, &mut cursor)?;
         let bones = Vec::parse(&header.config, &mut cursor)?;
@@ -84,7 +84,7 @@ impl Pmx {
         Ok(Self {
             header,
             vertices,
-            surfaces,
+            indices,
             textures,
             materials,
             bones,
@@ -116,7 +116,7 @@ impl Display for Pmx {
             self.header.model_comment_universal
         )?;
         writeln!(f, "  vertices: {}", self.vertices.len())?;
-        writeln!(f, "  surfaces: {}", self.surfaces.len())?;
+        writeln!(f, "  indices: {}", self.indices.vertex_indices.len())?;
         writeln!(f, "  textures: {}", self.textures.len())?;
         writeln!(f, "  materials: {}", self.materials.len())?;
         writeln!(f, "  bones: {}", self.bones.len())?;

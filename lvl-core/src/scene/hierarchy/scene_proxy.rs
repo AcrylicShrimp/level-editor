@@ -3,6 +3,7 @@ use super::{
     Object, ObjectId, ObjectIdAllocator, ObjectSiblingIter, ObjectStorage, Transform,
 };
 use crate::context::Context;
+use lvl_math::Mat4;
 use std::{
     any::{Any, TypeId},
     collections::HashSet,
@@ -152,6 +153,14 @@ impl<'scene, 'window> SceneProxy<'scene, 'window> {
         }
 
         self.hierarchy_storage.is_active_self(object_id)
+    }
+
+    pub fn transform_matrix(&self, object_id: ObjectId) -> Option<&Mat4> {
+        if !self.object_storage.is_exists(object_id) {
+            return None;
+        }
+
+        Some(self.hierarchy_storage.matrix(object_id))
     }
 
     pub fn parent(&self, object_id: ObjectId) -> Option<ObjectId> {

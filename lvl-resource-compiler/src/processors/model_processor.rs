@@ -58,7 +58,7 @@ impl Processor for ModelProcessor {
 
 mod pmx {
     use lvl_math::{Vec3, Vec4};
-    use lvl_pmx::{Pmx, PmxMaterial, PmxSurface, PmxVertex};
+    use lvl_pmx::{Pmx, PmxIndices, PmxMaterial, PmxVertex};
     use lvl_resource::{
         MaterialProperty, MaterialPropertyValue, MaterialPropertyValueUniformKind, MaterialSource,
         MeshElement, MeshElementKind, MeshIndexKind, MeshSource, Resource, ResourceKind,
@@ -79,13 +79,12 @@ mod pmx {
         let mut previous_surface_count = 0;
 
         for material in &pmx.materials {
-            let surface_count = (material.surface_count / 3) as usize;
             let material_source = make_shader_source(&pmx.header.model_name_local, material);
             let mesh_source = make_mesh(
                 previous_surface_count,
-                surface_count,
+                material.surface_count as usize,
                 &pmx.vertices,
-                &pmx.surfaces,
+                &pmx.indices,
             );
 
             let material_resource = Resource {
@@ -107,7 +106,7 @@ mod pmx {
                 mesh: mesh_resource,
             });
 
-            previous_surface_count += surface_count;
+            previous_surface_count += material.surface_count as usize;
         }
 
         parts
@@ -179,30 +178,28 @@ mod pmx {
         previous_surface_count: usize,
         pmx_surface_count: usize,
         pmx_vertices: &[PmxVertex],
-        pmx_surfaces: &[PmxSurface],
+        pmx_indices: &PmxIndices,
     ) -> MeshSource {
         let surface_count = pmx_surface_count as usize;
         let mut indices = Vec::with_capacity(surface_count * 3);
         let mut vertices = Vec::with_capacity(surface_count * 3);
         let mut index_map = HashMap::new();
 
-        for surface in
-            &pmx_surfaces[previous_surface_count..(previous_surface_count + surface_count)]
+        for index in &pmx_indices.vertex_indices
+            [previous_surface_count..(previous_surface_count + surface_count)]
         {
-            for vertex_index in surface.vertex_indices {
-                let pmx_vertex_index = vertex_index.get();
-                let vertex_index = match index_map.entry(pmx_vertex_index) {
-                    Entry::Occupied(entry) => *entry.get(),
-                    Entry::Vacant(entry) => {
-                        let index = vertices.len() as u32;
-                        vertices.push(pmx_vertices[pmx_vertex_index as usize].clone());
-                        entry.insert(index);
-                        index
-                    }
-                };
+            let pmx_vertex_index = index.get();
+            let vertex_index = match index_map.entry(pmx_vertex_index) {
+                Entry::Occupied(entry) => *entry.get(),
+                Entry::Vacant(entry) => {
+                    let index = vertices.len() as u32;
+                    vertices.push(pmx_vertices[pmx_vertex_index as usize].clone());
+                    entry.insert(index);
+                    index
+                }
+            };
 
-                indices.push(vertex_index);
-            }
+            indices.push(vertex_index);
         }
 
         let vertices = Vec::from_iter(
@@ -293,6 +290,12 @@ mod pmx {
         let vertices = vertices.as_bytes().to_vec();
         let indices = indices.as_bytes().to_vec();
 
-        MeshSource::new(vertices, indices, MeshIndexKind::U32, elements)
+        MeshSource::new(
+            surface_count as u32,
+            vertices,
+            indices,
+            MeshIndexKind::U32,
+            elements,
+        )
     }
 }

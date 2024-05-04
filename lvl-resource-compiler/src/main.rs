@@ -1,6 +1,5 @@
 mod cli;
 mod processors;
-mod resource_processor;
 
 use cli::{cli, compile};
 use log::{error, LevelFilter};

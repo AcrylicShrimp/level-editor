@@ -15,3 +15,4 @@ serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 wgpu = "0.19"
 winit = "0.29"
+zerocopy = { version = "0.7" }

@@ -16,6 +16,14 @@ impl MaterialSource {
             properties: BTreeMap::from_iter(properties.into_iter().map(|p| (p.name.clone(), p))),
         }
     }
+
+    pub fn shader_name(&self) -> &str {
+        &self.shader_name
+    }
+
+    pub fn properties(&self) -> &BTreeMap<String, MaterialProperty> {
+        &self.properties
+    }
 }
 
 impl FromResourceKind for MaterialSource {

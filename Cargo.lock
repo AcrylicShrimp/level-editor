@@ -1194,6 +1194,7 @@ dependencies = [
  "thiserror",
  "wgpu",
  "winit",
+ "zerocopy",
 ]
 
 [[package]]
@@ -1217,6 +1218,7 @@ version = "0.1.0"
 dependencies = [
  "lvl-math",
  "serde",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -2616,6 +2618,7 @@ checksum = "b671ff9fb03f78b46ff176494ee1ebe7d603393f42664be55b64dc8d53969805"
 dependencies = [
  "bitflags 2.5.0",
  "js-sys",
+ "serde",
  "web-sys",
 ]
 

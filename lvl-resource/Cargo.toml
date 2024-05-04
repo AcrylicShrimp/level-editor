@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 lvl-math = { path = "../lvl-math" }
 serde = { version = "1", features = ["derive"] }
+wgpu-types = { version = "0.19", features = ["replay", "trace"] }

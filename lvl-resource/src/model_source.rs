@@ -15,6 +15,14 @@ impl ModelSource {
             elements,
         }
     }
+
+    pub fn root_element_index(&self) -> u32 {
+        self.root_element_index
+    }
+
+    pub fn elements(&self) -> &[ModelElement] {
+        &self.elements
+    }
 }
 
 impl FromResourceKind for ModelSource {
