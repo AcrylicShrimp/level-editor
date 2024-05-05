@@ -47,7 +47,7 @@ impl<'device> InstanceDataProvider<'device> {
     pub fn create_instance_buffer(&self, matrix: &Mat4) -> Buffer {
         self.device.create_buffer_init(&BufferInitDescriptor {
             label: None,
-            contents: matrix.transposed().as_bytes(),
+            contents: matrix.as_bytes(),
             usage: BufferUsages::VERTEX,
         })
     }

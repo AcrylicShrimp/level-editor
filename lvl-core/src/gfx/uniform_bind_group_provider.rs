@@ -72,7 +72,7 @@ impl UniformBindGroupProvider {
             0,
             NonZeroU64::new(size_of::<[[f32; 4]; 4]>() as u64).unwrap(),
         ) {
-            view.copy_from_slice(matrix.transposed().as_bytes());
+            view.copy_from_slice(matrix.as_bytes());
         }
     }
 }
