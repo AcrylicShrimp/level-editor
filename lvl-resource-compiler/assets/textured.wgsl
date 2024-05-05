@@ -42,9 +42,9 @@ fn vs_main(instance: InstanceInput, vertex: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> FragmentOutput {
-  // if uniforms.diffuse_color.a <= 0.0 {
-  //   discard;
-  // }
+  if uniforms.diffuse_color.a <= 0.0 {
+    discard;
+  }
 
   var out: FragmentOutput;
 

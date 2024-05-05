@@ -78,7 +78,7 @@ fn make_element_object(
 
         material.set_property(
             "light_color",
-            MaterialPropertyValue::Vec3(Vec3::new(1.0, 1.0, 1.0)),
+            MaterialPropertyValue::Vec3(Vec3::new(0.0, 0.0, 0.0)),
         );
         material.set_property(
             "light_direction",

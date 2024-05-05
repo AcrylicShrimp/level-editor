@@ -290,11 +290,46 @@ impl Material {
                 });
             }
 
+            for property in &self.properties {
+                // user-defined bind groups come after the built-in bind group
+                let group = group + 1;
+
+                if property.group as usize != group {
+                    continue;
+                }
+
+                let value = match property.value.as_ref() {
+                    Some(value) => value,
+                    None => {
+                        return None;
+                    }
+                };
+
+                match &property.kind {
+                    MaterialPropertyKind::UniformMember { .. } => {}
+                    _ => {
+                        continue;
+                    }
+                };
+
+                if let Some(bytes) = value.as_bytes() {
+                    self.prepare_uniform_value(bytes, &property.kind, &gfx_ctx.queue);
+                }
+            }
+
             loop {
                 let property = self.properties.iter().find(|property| {
                     // user-defined bind groups come after the built-in bind group
                     let group = group + 1;
-                    property.group as usize == group && property.binding as usize == entries.len()
+
+                    if property.group as usize != group {
+                        return false;
+                    }
+
+                    match property.kind {
+                        MaterialPropertyKind::UniformMember { .. } => false,
+                        _ => property.binding as usize == entries.len(),
+                    }
                 });
                 let property = match property {
                     Some(property) => property,
@@ -321,11 +356,6 @@ impl Material {
                             });
                         }
                     }
-                    MaterialPropertyKind::UniformMember { .. } => {
-                        if let Some(bytes) = value.as_bytes() {
-                            self.prepare_uniform_value(bytes, &property.kind, &gfx_ctx.queue);
-                        }
-                    }
                     MaterialPropertyKind::Texture => {
                         if let MaterialPropertyValue::Texture(value) = value {
                             entries.push(BindGroupEntry {
@@ -342,6 +372,7 @@ impl Material {
                             });
                         }
                     }
+                    _ => {}
                 }
             }
 
