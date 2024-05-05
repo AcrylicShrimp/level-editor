@@ -3,8 +3,8 @@ use std::cell::RefCell;
 use thiserror::Error;
 use wgpu::{
     Adapter, Backend, Backends, CommandEncoderDescriptor, Device, DeviceDescriptor, DeviceType,
-    Features, Instance, InstanceDescriptor, Queue, Surface, SurfaceConfiguration, SurfaceError,
-    SurfaceTexture, TextureUsages,
+    Features, Instance, InstanceDescriptor, MaintainBase, Queue, Surface, SurfaceConfiguration,
+    SurfaceError, SurfaceTexture, TextureUsages,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -125,6 +125,7 @@ impl<'window> GfxContext<'window> {
 
     pub fn end_frame(&self, frame: Frame) {
         self.queue.submit(std::iter::once(frame.finish()));
+        self.device.poll(MaintainBase::Wait);
     }
 }
 

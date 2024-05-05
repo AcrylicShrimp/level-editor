@@ -2,7 +2,7 @@ mod reflection;
 mod template;
 
 use self::{
-    reflection::{inspect_bindings, inspect_locations},
+    reflection::{inspect_bindings, inspect_locations, inspect_uniform_members},
     template::expand_wgsl_shader_content,
 };
 use super::Processor;
@@ -78,8 +78,9 @@ impl ShaderProcessor {
             }
         };
 
-        let bindings = inspect_bindings(&module, builtin_uniform_bind_group);
-        let locations = inspect_locations(display_name, &module, instance_input_typename);
+        let bindings = inspect_bindings(module, builtin_uniform_bind_group);
+        let uniform_bindings = inspect_uniform_members(module, builtin_uniform_bind_group);
+        let locations = inspect_locations(display_name, module, instance_input_typename);
 
         Ok(ShaderSource::new(
             content,
@@ -87,6 +88,7 @@ impl ShaderProcessor {
             fragment_entry_point,
             builtin_uniform_bind_group,
             bindings,
+            uniform_bindings,
             locations,
         ))
     }

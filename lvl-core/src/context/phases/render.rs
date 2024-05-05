@@ -1,8 +1,6 @@
 mod render_command;
 mod render_static_mesh_renderer;
 
-use std::collections::BTreeSet;
-
 use self::render_static_mesh_renderer::build_render_command_static_mesh_renderer;
 use super::common::get_all_cameras;
 use crate::{

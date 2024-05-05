@@ -20,7 +20,7 @@ struct FragmentOutput {
 @vertex
 fn vs_main(instance: InstanceInput, vertex: VertexInput) -> VertexOutput {
   let world_pos = builtin_transform_to_world_space(instance, vec4<f32>(vertex.position, 1.0));
-  let clip_pos = builtin_tranform_to_clip_space(world_pos);
+  let clip_pos = builtin_transform_to_clip_space(world_pos);
 
   var out: VertexOutput;
   out.position = clip_pos;

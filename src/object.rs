@@ -1,5 +1,5 @@
 use lvl_core::{
-    gfx::elements::{Material, StaticMesh},
+    gfx::elements::{Material, MaterialPropertyValue, StaticMesh},
     scene::{
         components::{
             Camera, CameraClearMode, CameraProjectionMode, StaticMeshRenderer,
@@ -8,7 +8,7 @@ use lvl_core::{
         ObjectId, SceneProxy, Transform,
     },
 };
-use lvl_math::Vec4;
+use lvl_math::{Vec3, Vec4};
 use lvl_resource::{ModelElement, ModelSource, ResourceFile};
 
 pub fn make_camera_object(order: i64, clear_color: Vec4, scene: &mut SceneProxy) -> ObjectId {
@@ -72,9 +72,18 @@ fn make_element_object(
         let material_source = resource.find(&visible_part.material_name).unwrap();
         let mesh_source = resource.find(&visible_part.mesh_name).unwrap();
 
-        let material =
+        let mut material =
             Material::load_from_source(resource, material_source, scene.context().gfx_ctx());
         let mesh = StaticMesh::load_from_source(mesh_source, scene.context().gfx_ctx());
+
+        material.set_property(
+            "light_color",
+            MaterialPropertyValue::Vec3(Vec3::new(1.0, 1.0, 1.0)),
+        );
+        material.set_property(
+            "light_direction",
+            MaterialPropertyValue::Vec3(Vec3::new(0.5, -1.0, 0.5).normalized()),
+        );
 
         let visible_part_id = scene.create_object();
         scene.add_component(

@@ -1,6 +1,6 @@
 use super::ShaderReflection;
 use crate::gfx::GfxContext;
-use lvl_resource::{ShaderBindingElementKind, ShaderSource};
+use lvl_resource::{ShaderBindingKind, ShaderSource};
 use wgpu::{
     BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType,
     BufferBindingType, PipelineLayout, PipelineLayoutDescriptor, ShaderModule,
@@ -18,7 +18,7 @@ pub struct Shader {
 impl Shader {
     pub fn load_from_source(source: &ShaderSource, gfx_ctx: &GfxContext) -> Self {
         let max_group = source
-            .binding_elements()
+            .bindings()
             .iter()
             .map(|element| element.group)
             .max()
@@ -29,7 +29,7 @@ impl Shader {
             // user-defined bind groups come after the built-in bind group
             let group = group + 1;
             let mut in_group = source
-                .binding_elements()
+                .bindings()
                 .iter()
                 .filter(|element| element.group == group)
                 .collect::<Vec<_>>();
@@ -44,12 +44,12 @@ impl Shader {
                 }
 
                 let ty = match element.kind {
-                    ShaderBindingElementKind::Buffer { size } => BindingType::Buffer {
+                    ShaderBindingKind::UniformBuffer { size, .. } => BindingType::Buffer {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
                         min_binding_size: Some(size),
                     },
-                    ShaderBindingElementKind::Texture {
+                    ShaderBindingKind::Texture {
                         sample_type,
                         view_dimension,
                         multisampled,
@@ -58,7 +58,7 @@ impl Shader {
                         view_dimension,
                         multisampled,
                     },
-                    ShaderBindingElementKind::Sampler { binding_type } => {
+                    ShaderBindingKind::Sampler { binding_type } => {
                         BindingType::Sampler(binding_type)
                     }
                 };

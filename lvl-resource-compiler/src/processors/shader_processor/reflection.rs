@@ -1,21 +1,21 @@
-use std::{
-    collections::{btree_map::Entry, BTreeMap, BTreeSet},
-    num::NonZeroU64,
-};
-
 use log::warn;
-use lvl_resource::{ShaderBindingElement, ShaderBindingElementKind};
+use lvl_resource::{ShaderBinding, ShaderBindingKind, ShaderUniformMember};
 use naga::{
     AddressSpace, ArraySize, Binding, ImageClass, ImageDimension, Module, ScalarKind, ShaderStage,
     Type, TypeInner, VectorSize,
+};
+use std::{
+    collections::{btree_map::Entry, BTreeMap, BTreeSet},
+    num::NonZeroU64,
 };
 use wgpu_types::{SamplerBindingType, TextureSampleType, TextureViewDimension};
 
 pub fn inspect_bindings(
     module: &Module,
     builtin_uniform_bind_group: Option<u32>,
-) -> Vec<ShaderBindingElement> {
+) -> Vec<ShaderBinding> {
     let mut bindings = Vec::with_capacity(module.global_variables.len());
+    let mut buffer_count = 0;
 
     for (_, variable) in module.global_variables.iter() {
         let name = match &variable.name {
@@ -38,7 +38,7 @@ pub fn inspect_bindings(
 
         let kind = match variable.space {
             AddressSpace::Uniform | AddressSpace::Handle => {
-                match shader_ty_to_binding_element_kind(module, &module.types[variable.ty]) {
+                match shader_ty_to_binding_kind(buffer_count, module, &module.types[variable.ty]) {
                     Some(kind) => kind,
                     None => {
                         continue;
@@ -54,7 +54,14 @@ pub fn inspect_bindings(
             }
         };
 
-        bindings.push(ShaderBindingElement {
+        match kind {
+            ShaderBindingKind::UniformBuffer { .. } => {
+                buffer_count += 1;
+            }
+            _ => {}
+        }
+
+        bindings.push(ShaderBinding {
             name: name.clone(),
             group,
             binding,
@@ -65,10 +72,11 @@ pub fn inspect_bindings(
     bindings
 }
 
-fn shader_ty_to_binding_element_kind(
+fn shader_ty_to_binding_kind(
+    buffer_count: u32,
     module: &Module,
     ty: &Type,
-) -> Option<ShaderBindingElementKind> {
+) -> Option<ShaderBindingKind> {
     match &ty.inner {
         TypeInner::Scalar(_)
         | TypeInner::Vector { .. }
@@ -76,7 +84,15 @@ fn shader_ty_to_binding_element_kind(
         | TypeInner::Atomic(_)
         | TypeInner::Array { .. }
         | TypeInner::Struct { .. } => {
-            resolve_shader_ty_size(module, ty).map(|size| ShaderBindingElementKind::Buffer { size })
+            resolve_shader_ty_size(module, ty).map(|size| ShaderBindingKind::UniformBuffer {
+                size,
+                index: buffer_count,
+                is_struct: if let TypeInner::Struct { .. } = &ty.inner {
+                    true
+                } else {
+                    false
+                },
+            })
         }
         TypeInner::Pointer { .. } | TypeInner::ValuePointer { .. } => None,
         TypeInner::Image {
@@ -113,13 +129,13 @@ fn shader_ty_to_binding_element_kind(
                 }
             };
 
-            Some(ShaderBindingElementKind::Texture {
+            Some(ShaderBindingKind::Texture {
                 sample_type,
                 view_dimension,
                 multisampled,
             })
         }
-        TypeInner::Sampler { comparison } => Some(ShaderBindingElementKind::Sampler {
+        TypeInner::Sampler { comparison } => Some(ShaderBindingKind::Sampler {
             binding_type: if *comparison {
                 SamplerBindingType::Comparison
             } else {
@@ -218,6 +234,64 @@ fn resolve_shader_ty_size(module: &Module, ty: &Type) -> Option<NonZeroU64> {
             NonZeroU64::new(base_size.get() * size as u64)
         }
     }
+}
+
+pub fn inspect_uniform_members(
+    module: &Module,
+    builtin_uniform_bind_group: Option<u32>,
+) -> Vec<ShaderUniformMember> {
+    let mut buffer_count = 0;
+    let mut uniform_members = Vec::new();
+
+    for (_, variable) in module.global_variables.iter() {
+        let group = match &variable.binding {
+            Some(binding) => binding.group,
+            None => {
+                continue;
+            }
+        };
+
+        if Some(group) == builtin_uniform_bind_group {
+            continue;
+        }
+
+        if variable.space != AddressSpace::Uniform {
+            continue;
+        }
+
+        let ty = &module.types[variable.ty];
+        let members = match &ty.inner {
+            TypeInner::Struct { members, .. } => members,
+            _ => {
+                continue;
+            }
+        };
+
+        for member in members {
+            let name = if let Some(name) = &member.name {
+                name
+            } else {
+                continue;
+            };
+            let size = match resolve_shader_ty_size(module, &module.types[member.ty]) {
+                Some(size) => size,
+                None => {
+                    continue;
+                }
+            };
+
+            uniform_members.push(ShaderUniformMember {
+                name: name.clone(),
+                offset: member.offset as u64,
+                size,
+                buffer_index: buffer_count,
+            });
+        }
+
+        buffer_count += 1;
+    }
+
+    uniform_members
 }
 
 pub fn inspect_locations(

@@ -9,7 +9,8 @@ pub struct ShaderSource {
     vs_main: String,
     fs_main: String,
     builtin_uniform_bind_group: Option<u32>,
-    binding_elements: Vec<ShaderBindingElement>,
+    bindings: Vec<ShaderBinding>,
+    uniform_members: Vec<ShaderUniformMember>,
     locations: BTreeMap<String, u32>,
 }
 
@@ -19,7 +20,8 @@ impl ShaderSource {
         vs_main: String,
         fs_main: String,
         builtin_uniform_bind_group: Option<u32>,
-        binding_elements: Vec<ShaderBindingElement>,
+        bindings: Vec<ShaderBinding>,
+        uniform_members: Vec<ShaderUniformMember>,
         locations: BTreeMap<String, u32>,
     ) -> Self {
         Self {
@@ -27,7 +29,8 @@ impl ShaderSource {
             vs_main,
             fs_main,
             builtin_uniform_bind_group,
-            binding_elements,
+            bindings,
+            uniform_members,
             locations,
         }
     }
@@ -48,8 +51,12 @@ impl ShaderSource {
         self.builtin_uniform_bind_group
     }
 
-    pub fn binding_elements(&self) -> &[ShaderBindingElement] {
-        &self.binding_elements
+    pub fn bindings(&self) -> &[ShaderBinding] {
+        &self.bindings
+    }
+
+    pub fn uniform_members(&self) -> &[ShaderUniformMember] {
+        &self.uniform_members
     }
 
     pub fn locations(&self) -> &BTreeMap<String, u32> {
@@ -67,17 +74,19 @@ impl FromResourceKind for ShaderSource {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ShaderBindingElement {
+pub struct ShaderBinding {
     pub name: String,
     pub group: u32,
     pub binding: u32,
-    pub kind: ShaderBindingElementKind,
+    pub kind: ShaderBindingKind,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ShaderBindingElementKind {
-    Buffer {
+pub enum ShaderBindingKind {
+    UniformBuffer {
+        index: u32,
         size: NonZeroU64,
+        is_struct: bool,
     },
     Texture {
         sample_type: TextureSampleType,
@@ -87,4 +96,12 @@ pub enum ShaderBindingElementKind {
     Sampler {
         binding_type: SamplerBindingType,
     },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ShaderUniformMember {
+    pub name: String,
+    pub offset: u64,
+    pub size: NonZeroU64,
+    pub buffer_index: u32,
 }

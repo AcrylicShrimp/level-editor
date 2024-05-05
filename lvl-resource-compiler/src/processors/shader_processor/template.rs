@@ -27,7 +27,7 @@ pub fn expand_wgsl_shader_content(content: &str) -> Result<ExpandedShaderContent
     increase_custom_binding_groups(&mut module);
     increase_custom_locations(&mut module, INSTANCE_INPUT_TYPENAME);
 
-    let mut validator = naga::valid::Validator::new(ValidationFlags::empty(), Capabilities::all());
+    let mut validator = naga::valid::Validator::new(ValidationFlags::all(), Capabilities::all());
     let module_info = validator.validate(&module)?;
 
     let transformed = naga::back::wgsl::write_string(&module, &module_info, WriterFlags::empty())?;
