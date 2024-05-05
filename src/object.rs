@@ -1,7 +1,7 @@
 use lvl_core::{
     gfx::elements::{Material, StaticMesh},
     scene::{
-        components::{Camera, CameraClearMode, StaticMeshRenderer},
+        components::{Camera, CameraClearMode, CameraProjectionMode, StaticMeshRenderer},
         ObjectId, SceneProxy, Transform,
     },
 };
@@ -16,6 +16,11 @@ pub fn make_camera_object(order: i64, clear_color: Vec4, scene: &mut SceneProxy)
         Camera {
             order,
             clear_mode: CameraClearMode::All { color: clear_color },
+            projection_mode: CameraProjectionMode::Perspective {
+                fov: 45.0,
+                near: 0.1,
+                far: 100.0,
+            },
         },
     );
 

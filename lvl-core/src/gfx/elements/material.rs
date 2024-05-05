@@ -1,6 +1,6 @@
 use super::{Shader, Texture};
 use crate::gfx::GfxContext;
-use lvl_math::{Vec2, Vec3, Vec4};
+use lvl_math::{Mat4, Vec2, Vec3, Vec4};
 use lvl_resource::{
     MaterialPropertyValueUniformKind, MaterialSource, ResourceFile, ShaderBindingElementKind,
     ShaderSource, TextureKind, TextureSource,
@@ -176,6 +176,8 @@ impl Material {
 
             loop {
                 let property = self.properties.iter().find(|property| {
+                    // user-defined bind groups come after the built-in bind group
+                    let group = group + 1;
                     property.group as usize == group && property.binding as usize == entries.len()
                 });
                 let property = match property {

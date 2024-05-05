@@ -48,7 +48,10 @@ impl Processor for ModelProcessor {
         });
 
         for part in parts {
-            resources.push(part.shader);
+            if let Some(shader) = part.shader {
+                resources.push(shader);
+            }
+
             resources.push(part.material);
             resources.push(part.mesh);
         }
@@ -59,6 +62,7 @@ impl Processor for ModelProcessor {
 
 mod pmx {
     use crate::processors::ShaderProcessor;
+    use log::error;
     use lvl_math::{Vec3, Vec4};
     use lvl_pmx::{Pmx, PmxIndices, PmxMaterial, PmxVertex};
     use lvl_resource::{
@@ -72,7 +76,7 @@ mod pmx {
     use zerocopy::AsBytes;
 
     pub struct SplittedPart {
-        pub shader: Resource,
+        pub shader: Option<Resource>,
         pub material: Resource,
         pub mesh: Resource,
     }
@@ -93,14 +97,12 @@ mod pmx {
             );
             let shader_source = match shader_source {
                 Ok(source) => source,
-                Err(_) => {
-                    todo!()
-                }
-            };
-            let shader_source = match shader_source {
-                Some(source) => source,
-                None => {
-                    todo!()
+                Err(err) => {
+                    error!(
+                        "failed to process shader `{}`; it will be ignored: {}",
+                        shader_source_name, err
+                    );
+                    None
                 }
             };
 
@@ -112,10 +114,10 @@ mod pmx {
                 &pmx.indices,
             );
 
-            let shader_resource = Resource {
+            let shader_resource = shader_source.map(|source| Resource {
                 name: shader_source_name,
-                kind: ResourceKind::Shader(shader_source),
-            };
+                kind: ResourceKind::Shader(source),
+            });
             let material_resource = Resource {
                 name: format!(
                     "{}/material:{}",
@@ -277,19 +279,19 @@ mod pmx {
                 offset: size_of::<[f32; 3]>() as u64,
             },
             MeshElement {
-                name: "uv0".to_owned(),
+                name: "uv_0_".to_owned(),
                 kind: MeshElementKind::TexCoord(0),
                 offset: size_of::<[f32; 3]>() as u64 + size_of::<[f32; 3]>() as u64,
             },
             MeshElement {
-                name: "additional_0".to_owned(),
+                name: "additional_0_".to_owned(),
                 kind: MeshElementKind::Additional(0),
                 offset: size_of::<[f32; 3]>() as u64
                     + size_of::<[f32; 3]>() as u64
                     + size_of::<[f32; 2]>() as u64,
             },
             MeshElement {
-                name: "additional_1".to_owned(),
+                name: "additional_1_".to_owned(),
                 kind: MeshElementKind::Additional(1),
                 offset: size_of::<[f32; 3]>() as u64
                     + size_of::<[f32; 3]>() as u64
@@ -297,7 +299,7 @@ mod pmx {
                     + size_of::<[f32; 4]>() as u64,
             },
             MeshElement {
-                name: "additional_2".to_owned(),
+                name: "additional_2_".to_owned(),
                 kind: MeshElementKind::Additional(2),
                 offset: size_of::<[f32; 3]>() as u64
                     + size_of::<[f32; 3]>() as u64
@@ -306,7 +308,7 @@ mod pmx {
                     + size_of::<[f32; 4]>() as u64,
             },
             MeshElement {
-                name: "additional_3".to_owned(),
+                name: "additional_3_".to_owned(),
                 kind: MeshElementKind::Additional(3),
                 offset: size_of::<[f32; 3]>() as u64
                     + size_of::<[f32; 3]>() as u64

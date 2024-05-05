@@ -9,6 +9,7 @@ pub struct ShaderSource {
     source: String,
     vs_main: String,
     fs_main: String,
+    builtin_uniform_bind_group: Option<u32>,
     binding_elements: Vec<ShaderBindingElement>,
     locations: BTreeMap<String, u32>,
 }
@@ -19,6 +20,7 @@ impl ShaderSource {
         source: String,
         vs_main: String,
         fs_main: String,
+        builtin_uniform_bind_group: Option<u32>,
         binding_elements: Vec<ShaderBindingElement>,
         locations: BTreeMap<String, u32>,
     ) -> Self {
@@ -27,6 +29,7 @@ impl ShaderSource {
             source,
             vs_main,
             fs_main,
+            builtin_uniform_bind_group,
             binding_elements,
             locations,
         }
@@ -46,6 +49,10 @@ impl ShaderSource {
 
     pub fn fs_main(&self) -> &str {
         &self.fs_main
+    }
+
+    pub fn builtin_uniform_bind_group(&self) -> Option<u32> {
+        self.builtin_uniform_bind_group
     }
 
     pub fn binding_elements(&self) -> &[ShaderBindingElement] {

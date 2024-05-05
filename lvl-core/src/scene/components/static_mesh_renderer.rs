@@ -5,14 +5,13 @@ use crate::{
     },
     scene::Component,
 };
-use lvl_resource::MeshIndexKind;
 use std::{
     any::Any,
     cell::{RefCell, RefMut},
 };
 use wgpu::{
     ColorTargetState, ColorWrites, CompareFunction, DepthStencilState, Face, FragmentState,
-    FrontFace, IndexFormat, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline,
+    FrontFace, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline,
     RenderPipelineDescriptor, StencilFaceState, StencilState, TextureFormat, VertexAttribute,
     VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
 };
@@ -54,6 +53,8 @@ impl StaticMeshRenderer {
     pub(crate) fn construct_render_pipeline(
         &self,
         gfx_ctx: &GfxContext,
+        instance_data_size: u32,
+        instance_data_attributes: &[VertexAttribute],
     ) -> RefMut<Option<RenderPipeline>> {
         let mut pipeline = self.pipeline.borrow_mut();
 
@@ -118,11 +119,18 @@ impl StaticMeshRenderer {
                 vertex: VertexState {
                     module: self.material.shader().module(),
                     entry_point: &self.material.shader().reflection().vertex_entry_point,
-                    buffers: &[VertexBufferLayout {
-                        array_stride: mesh_layout.stride(),
-                        step_mode: VertexStepMode::Vertex,
-                        attributes: &attributes,
-                    }],
+                    buffers: &[
+                        VertexBufferLayout {
+                            array_stride: instance_data_size as u64,
+                            step_mode: VertexStepMode::Instance,
+                            attributes: instance_data_attributes,
+                        },
+                        VertexBufferLayout {
+                            array_stride: mesh_layout.stride(),
+                            step_mode: VertexStepMode::Vertex,
+                            attributes: &attributes,
+                        },
+                    ],
                 },
                 primitive: PrimitiveState {
                     topology: PrimitiveTopology::TriangleList,

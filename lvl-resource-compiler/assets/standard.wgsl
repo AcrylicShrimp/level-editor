@@ -4,7 +4,7 @@
 struct VertexInput {
   @location(0) position: vec3<f32>,
   @location(1) normal: vec3<f32>,
-  @location(2) uv0: vec2<f32>,
+  @location(2) uv_0: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -18,11 +18,14 @@ struct FragmentOutput {
 };
 
 @vertex
-fn vs_main(vertex: VertexInput) -> VertexOutput {
+fn vs_main(instance: InstanceInput, vertex: VertexInput) -> VertexOutput {
+  let world_pos = builtin_transform_to_world_space(instance, vec4<f32>(vertex.position, 1.0));
+  let clip_pos = builtin_tranform_to_clip_space(world_pos);
+
   var out: VertexOutput;
-  out.position = vec4<f32>(vertex.position, 1.0);
+  out.position = clip_pos;
   out.color = diffuse_color;
-  out.uv = vertex.uv0;
+  out.uv = vertex.uv_0;
   return out;
 }
 

@@ -77,17 +77,9 @@ impl<'window> Looper<'window> {
         window: &'window Window,
         driver: Option<Box<dyn Driver>>,
     ) -> Result<Self, LooperCreationError> {
+        let physical_size = window.inner_size();
         let gfx_ctx = GfxContext::new(window).await?;
-        let ctx = Context::new(gfx_ctx);
-
-        {
-            let physical_size = window.inner_size();
-            // TODO: update scale factor
-            // let mut screen_mgr = ctx.screen_mgr_mut();
-            // screen_mgr.update_scale_factor(scale_factor, physical_size);
-            ctx.gfx_ctx().resize(physical_size);
-        }
-
+        let ctx = Context::new(gfx_ctx, physical_size);
         Ok(Self { ctx, driver })
     }
 
@@ -228,9 +220,6 @@ impl<'window> Looper<'window> {
                 event: WindowEvent::Resized(inner_size),
                 window_id: id,
             } if id == window_id => {
-                // TODO: handle resize event
-                // self.ctx.screen_mgr_mut().update_size(inner_size);
-
                 if inner_size.width == 0 || inner_size.height == 0 {
                     window_too_small = true;
                     return;
@@ -238,9 +227,9 @@ impl<'window> Looper<'window> {
                     window_too_small = false;
                 }
 
+                self.ctx.update_screen_size(inner_size);
                 self.ctx.gfx_ctx().device.poll(MaintainBase::Wait);
                 self.ctx.gfx_ctx().resize(inner_size);
-                // self.ctx.render_mgr_mut().resize(inner_size);
 
                 if looper_mode == LooperMode::Wait && !window_occluded {
                     window.request_redraw();
@@ -255,10 +244,6 @@ impl<'window> Looper<'window> {
                 target_frame_interval.update_window(window);
 
                 let inner_size = window.inner_size();
-                // TODO: update scale factor
-                // self.ctx
-                //     .screen_mgr_mut()
-                //     .update_scale_factor(scale_factor, *new_inner_size);
 
                 if inner_size.width == 0 || inner_size.height == 0 {
                     window_too_small = true;
@@ -267,8 +252,8 @@ impl<'window> Looper<'window> {
                     window_too_small = false;
                 }
 
+                self.ctx.update_screen_size(inner_size);
                 self.ctx.gfx_ctx().resize(inner_size);
-                // self.ctx.render_mgr_mut().resize(inner_size);
 
                 if looper_mode == LooperMode::Wait && !window_occluded {
                     window.request_redraw();

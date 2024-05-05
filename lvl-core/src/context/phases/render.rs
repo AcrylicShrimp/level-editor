@@ -5,7 +5,7 @@ use self::render_static_mesh_renderer::build_render_command_static_mesh_renderer
 use super::common::get_all_cameras;
 use crate::{
     context::{driver::Driver, Context},
-    gfx::{ClearMode, Frame, RenderPassTarget},
+    gfx::{ClearMode, Frame, InstanceDataProvider, RenderPassTarget},
     scene::{
         components::{Camera, CameraClearMode, StaticMeshRenderer},
         ObjectId, Scene, SceneProxy,
@@ -37,8 +37,25 @@ pub fn render(
 
     scene.with_proxy(|proxy| {
         for camera_id in get_all_cameras(proxy) {
+            let screen_size = ctx.screen_size();
+
+            let camera = proxy
+                .find_object_by_id(camera_id)
+                .unwrap()
+                .find_component_by_type::<Camera>()
+                .unwrap();
+            let camera_transform_matrix = proxy.transform_matrix(camera_id).unwrap();
+            let camera_projection_matrix = camera.projection_mode.to_mat4(
+                screen_size.width as f32 / screen_size.height as f32,
+                &camera_transform_matrix.inversed(),
+            );
+
+            ctx.gfx_ctx()
+                .uniform_bind_group_provider()
+                .update_camera_matrix(&camera_projection_matrix, &ctx.gfx_ctx().queue);
+
             render_pass_stage_opaque(ctx, camera_id, &surface_texture_view, &mut frame, proxy);
-            render_pass_stage_ui(ctx, camera_id, &surface_texture_view, &mut frame, proxy);
+            // render_pass_stage_ui(ctx, camera_id, &surface_texture_view, &mut frame, proxy);
         }
     });
 
@@ -64,10 +81,11 @@ fn render_pass_stage_opaque(
         .unwrap()
         .find_component_by_type::<Camera>()
         .unwrap();
-
     let camera_world_pos =
         scene.transform_matrix(camera_id).unwrap() * Vec4::new(0.0, 0.0, 0.0, 1.0);
+
     let mut commands = Vec::new();
+    let instance_data_provider = InstanceDataProvider::new(&ctx.gfx_ctx().device);
 
     if let Some(ids) = scene.find_object_ids_by_component_type::<StaticMeshRenderer>() {
         let mut ids_with_distances = ids
@@ -85,16 +103,23 @@ fn render_pass_stage_opaque(
 
         for (id, _) in ids_with_distances {
             let object = scene.find_object_by_id(id).unwrap();
+            let transform_matrix = scene.transform_matrix(id).unwrap();
 
             for renderer in object.find_components_by_type::<StaticMeshRenderer>() {
-                if let Some(command) =
-                    build_render_command_static_mesh_renderer(ctx.gfx_ctx(), renderer)
-                {
+                if let Some(command) = build_render_command_static_mesh_renderer(
+                    ctx.gfx_ctx(),
+                    transform_matrix,
+                    renderer,
+                    &instance_data_provider,
+                ) {
                     commands.push(command);
                 }
             }
         }
     }
+
+    let depth_stencil = ctx.gfx_ctx().depth_stencil.borrow();
+    let depth_texture_view = depth_stencil.texture_view().unwrap();
 
     let mut render_pass = frame.begin_render_pass(
         match camera.clear_mode {
@@ -118,11 +143,16 @@ fn render_pass_stage_opaque(
             view: &surface_texture_view,
             writable: true,
         })],
-        None,
+        Some(RenderPassTarget {
+            view: depth_texture_view,
+            writable: true,
+        }),
     );
 
+    let bind_group = ctx.gfx_ctx().uniform_bind_group_provider().bind_group();
+
     for command in &commands {
-        command.render(&mut render_pass);
+        command.render(&mut render_pass, bind_group);
     }
 }
 

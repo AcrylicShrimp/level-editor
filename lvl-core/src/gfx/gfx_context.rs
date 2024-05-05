@@ -1,4 +1,4 @@
-use super::Frame;
+use super::{DepthStencil, DepthStencilMode, Frame, UniformBindGroupProvider};
 use std::cell::RefCell;
 use thiserror::Error;
 use wgpu::{
@@ -26,6 +26,8 @@ pub struct GfxContext<'window> {
     pub queue: Queue,
     pub surface: Surface<'window>,
     pub surface_config: RefCell<SurfaceConfiguration>,
+    pub depth_stencil: RefCell<DepthStencil>,
+    pub uniform_bind_group_provider: UniformBindGroupProvider,
 }
 
 impl<'window> GfxContext<'window> {
@@ -80,13 +82,24 @@ impl<'window> GfxContext<'window> {
         });
         surface.configure(&device, &surface_config.borrow());
 
+        let depth_stencil =
+            DepthStencil::new(window_inner_size, DepthStencilMode::DepthOnly, &device).unwrap();
+
+        let uniform_bind_group_provider = UniformBindGroupProvider::new(&device);
+
         Ok(GfxContext {
             instance,
             device,
             queue,
             surface,
             surface_config,
+            depth_stencil: RefCell::new(depth_stencil),
+            uniform_bind_group_provider,
         })
+    }
+
+    pub fn uniform_bind_group_provider(&self) -> &UniformBindGroupProvider {
+        &self.uniform_bind_group_provider
     }
 
     pub fn resize(&self, size: PhysicalSize<u32>) {
@@ -94,6 +107,7 @@ impl<'window> GfxContext<'window> {
         surface_config.width = size.width;
         surface_config.height = size.height;
         self.surface.configure(&self.device, &surface_config);
+        self.depth_stencil.borrow_mut().resize(size, &self.device);
     }
 
     pub fn obtain_surface_view(&self) -> Result<SurfaceTexture, SurfaceError> {

@@ -27,6 +27,8 @@ impl Shader {
         let mut bind_group_layouts = Vec::with_capacity(max_group as usize);
 
         for group in 0..=max_group {
+            // user-defined bind groups come after the built-in bind group
+            let group = group + 1;
             let mut in_group = source
                 .binding_elements()
                 .iter()
@@ -83,11 +85,16 @@ impl Shader {
         }
 
         let layouts = bind_group_layouts.iter().collect::<Vec<_>>();
+
+        let mut layouts_with_builtin_bind_group = layouts.clone();
+        layouts_with_builtin_bind_group
+            .insert(0, gfx_ctx.uniform_bind_group_provider().bind_group_layout());
+
         let pipeline_layout = gfx_ctx
             .device
             .create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: &layouts,
+                bind_group_layouts: &layouts_with_builtin_bind_group,
                 push_constant_ranges: &[],
             });
 
