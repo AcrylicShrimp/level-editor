@@ -5,31 +5,38 @@ use crate::{
     },
     scene::Component,
 };
+use lvl_resource::MaterialRenderType;
 use std::{
     any::Any,
     cell::{RefCell, RefMut},
 };
 use wgpu::{
-    ColorTargetState, ColorWrites, CompareFunction, DepthStencilState, Face, FragmentState,
-    FrontFace, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline,
+    BlendState, ColorTargetState, ColorWrites, CompareFunction, DepthStencilState, Face,
+    FragmentState, FrontFace, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline,
     RenderPipelineDescriptor, StencilFaceState, StencilState, TextureFormat, VertexAttribute,
     VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
 };
 
 #[derive(Debug)]
 pub struct StaticMeshRenderer {
+    has_group: bool,
     mesh: StaticMesh,
     material: Material,
     pipeline: RefCell<Option<RenderPipeline>>,
 }
 
 impl StaticMeshRenderer {
-    pub fn new(mesh: StaticMesh, material: Material) -> Self {
+    pub fn new(has_group: bool, mesh: StaticMesh, material: Material) -> Self {
         Self {
+            has_group,
             mesh,
             material,
             pipeline: RefCell::new(None),
         }
+    }
+
+    pub fn has_group(&self) -> bool {
+        self.has_group
     }
 
     pub fn mesh(&self) -> &StaticMesh {
@@ -133,10 +140,20 @@ impl StaticMeshRenderer {
                     ],
                 },
                 primitive: PrimitiveState {
-                    topology: PrimitiveTopology::TriangleList,
+                    topology: if self.material.render_state().point_drawing {
+                        PrimitiveTopology::PointList
+                    } else if self.material.render_state().line_drawing {
+                        PrimitiveTopology::LineList
+                    } else {
+                        PrimitiveTopology::TriangleList
+                    },
                     strip_index_format: None,
                     front_face: FrontFace::Ccw,
-                    cull_mode: Some(Face::Back),
+                    cull_mode: if self.material.render_state().no_cull_back_face {
+                        None
+                    } else {
+                        Some(Face::Back)
+                    },
                     unclipped_depth: false,
                     polygon_mode: PolygonMode::Fill,
                     conservative: false,
@@ -159,7 +176,10 @@ impl StaticMeshRenderer {
                     entry_point: &self.material.shader().reflection().fragment_entry_point,
                     targets: &[Some(ColorTargetState {
                         format: TextureFormat::Bgra8UnormSrgb,
-                        blend: None,
+                        blend: match self.material.render_state().render_type {
+                            MaterialRenderType::Opaque => None,
+                            MaterialRenderType::Transparent => Some(BlendState::ALPHA_BLENDING),
+                        },
                         write_mask: ColorWrites::all(),
                     })],
                 }),

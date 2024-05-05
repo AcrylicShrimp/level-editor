@@ -7,19 +7,29 @@ use wgpu_types::{AddressMode, CompareFunction, FilterMode, SamplerBorderColor};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MaterialSource {
     shader_name: String,
+    render_state: MaterialRenderState,
     properties: BTreeMap<String, MaterialProperty>,
 }
 
 impl MaterialSource {
-    pub fn new(shader_name: String, properties: Vec<MaterialProperty>) -> Self {
+    pub fn new(
+        shader_name: String,
+        render_state: MaterialRenderState,
+        properties: Vec<MaterialProperty>,
+    ) -> Self {
         Self {
             shader_name,
+            render_state,
             properties: BTreeMap::from_iter(properties.into_iter().map(|p| (p.name.clone(), p))),
         }
     }
 
     pub fn shader_name(&self) -> &str {
         &self.shader_name
+    }
+
+    pub fn render_state(&self) -> &MaterialRenderState {
+        &self.render_state
     }
 
     pub fn properties(&self) -> &BTreeMap<String, MaterialProperty> {
@@ -34,6 +44,26 @@ impl FromResourceKind for MaterialSource {
             _ => None,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MaterialRenderState {
+    pub render_type: MaterialRenderType,
+    pub no_cull_back_face: bool,
+    pub cast_shadow_on_ground: bool,
+    pub cast_shadow_on_object: bool,
+    pub receive_shadow: bool,
+    pub has_edge: bool,
+    pub vertex_color: bool,
+    pub point_drawing: bool,
+    pub line_drawing: bool,
+    pub group_order: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MaterialRenderType {
+    Opaque,
+    Transparent,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

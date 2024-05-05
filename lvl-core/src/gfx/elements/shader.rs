@@ -1,3 +1,4 @@
+use super::ShaderReflection;
 use crate::gfx::GfxContext;
 use lvl_resource::{ShaderBindingElementKind, ShaderSource};
 use wgpu::{
@@ -5,8 +6,6 @@ use wgpu::{
     BufferBindingType, PipelineLayout, PipelineLayoutDescriptor, ShaderModule,
     ShaderModuleDescriptor, ShaderStages,
 };
-
-use super::ShaderReflection;
 
 #[derive(Debug)]
 pub struct Shader {

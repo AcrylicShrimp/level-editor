@@ -143,8 +143,8 @@ impl Parse for Vec<PmxMaterial> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PmxMaterialFlags {
-    /// `true` if back faces should be culled otherwise `false`.
-    pub cull_back_face: bool,
+    /// `true` if back faces should be rendered otherwise `false`.
+    pub no_cull_back_face: bool,
     /// `true` if it should cast shadow on ground otherwise `false`.
     pub cast_shadow_on_ground: bool,
     /// `true` if it should cast shadow on object otherwise `false`.
@@ -153,6 +153,20 @@ pub struct PmxMaterialFlags {
     pub receive_shadow: bool,
     /// `true` if it should be drawn with pencil-like outline otherwise `false`.
     pub has_edge: bool,
+    /// **PMX 2.1**
+    ///
+    /// `true` if additional 1 vec4 should be used as vertex color otherwise `false`.
+    pub vertex_color: bool,
+    /// **PMX 2.1**
+    ///
+    /// `true` if each of the 3 vertices of the triangle should be drawn as a point otherwise `false`.
+    ///
+    /// This takes precedence over `line_drawing`. If both are set, the point drawing is used.
+    pub point_drawing: bool,
+    /// **PMX 2.1**
+    ///
+    /// `true` if each of the 3 vertices of the triangle should be drawn as a line otherwise `false`.
+    pub line_drawing: bool,
 }
 
 impl Parse for PmxMaterialFlags {
@@ -162,18 +176,24 @@ impl Parse for PmxMaterialFlags {
         // since material flags has a fixed size, we don't need to check the size here
         let flags = u8::parse(config, cursor)?;
 
-        let cull_back_face = flags & 0b0000_0001 != 0;
+        let no_cull_back_face = flags & 0b0000_0001 != 0;
         let cast_shadow_on_ground = flags & 0b0000_0010 != 0;
         let cast_shadow_on_object = flags & 0b0000_0100 != 0;
         let receive_shadow = flags & 0b0000_1000 != 0;
         let has_edge = flags & 0b0001_0000 != 0;
+        let vertex_color = flags & 0b0010_0000 != 0;
+        let point_drawing = flags & 0b0100_0000 != 0;
+        let line_drawing = flags & 0b1000_0000 != 0;
 
         Ok(Self {
-            cull_back_face,
+            no_cull_back_face,
             cast_shadow_on_ground,
             cast_shadow_on_object,
             receive_shadow,
             has_edge,
+            vertex_color,
+            point_drawing,
+            line_drawing,
         })
     }
 }

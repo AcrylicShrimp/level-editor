@@ -1,13 +1,15 @@
 mod render_command;
 mod render_static_mesh_renderer;
 
+use std::collections::BTreeSet;
+
 use self::render_static_mesh_renderer::build_render_command_static_mesh_renderer;
 use super::common::get_all_cameras;
 use crate::{
     context::{driver::Driver, Context},
     gfx::{ClearMode, Frame, InstanceDataProvider, RenderPassTarget},
     scene::{
-        components::{Camera, CameraClearMode, StaticMeshRenderer},
+        components::{Camera, CameraClearMode, StaticMeshRenderer, StaticMeshRendererGroup},
         ObjectId, Scene, SceneProxy,
     },
 };
@@ -87,25 +89,75 @@ fn render_pass_stage_opaque(
     let mut commands = Vec::new();
     let instance_data_provider = InstanceDataProvider::new(&ctx.gfx_ctx().device);
 
+    // no-group renderers
     if let Some(ids) = scene.find_object_ids_by_component_type::<StaticMeshRenderer>() {
-        let mut ids_with_distances = ids
-            .iter()
-            .map(|id| {
-                let world_pos =
-                    scene.transform_matrix(*id).unwrap() * Vec4::new(0.0, 0.0, 0.0, 1.0);
-                let diff = Vec3::from_vec4(camera_world_pos - world_pos);
-                (*id, diff.len_square())
-            })
-            .collect::<Vec<_>>();
+        let mut non_group_renderers = Vec::with_capacity(ids.len());
+
+        for id in ids {
+            let object = scene.find_object_by_id(*id).unwrap();
+            let world_pos = scene.transform_matrix(*id).unwrap() * Vec4::new(0.0, 0.0, 0.0, 1.0);
+            let diff = Vec3::from_vec4(camera_world_pos - world_pos);
+            let distance = diff.len_square();
+            let renderers = object.find_components_by_type::<StaticMeshRenderer>();
+
+            for renderer in renderers {
+                if renderer.has_group() {
+                    continue;
+                }
+
+                non_group_renderers.push((distance, *id, renderer));
+            }
+        }
 
         // closer one comes first
-        ids_with_distances.sort_unstable_by(|(_, a), (_, b)| f32::partial_cmp(a, b).unwrap());
+        non_group_renderers
+            .sort_unstable_by(|(a, _, _), (b, _, _)| f32::partial_cmp(a, b).unwrap());
 
-        for (id, _) in ids_with_distances {
-            let object = scene.find_object_by_id(id).unwrap();
+        for (_, id, renderer) in non_group_renderers {
             let transform_matrix = scene.transform_matrix(id).unwrap();
 
-            for renderer in object.find_components_by_type::<StaticMeshRenderer>() {
+            if let Some(command) = build_render_command_static_mesh_renderer(
+                ctx.gfx_ctx(),
+                transform_matrix,
+                renderer,
+                &instance_data_provider,
+            ) {
+                commands.push(command);
+            }
+        }
+    }
+
+    // render group-renderers
+    if let Some(ids) = scene.find_object_ids_by_component_type::<StaticMeshRendererGroup>() {
+        let mut groups = Vec::with_capacity(ids.len());
+
+        for id in ids {
+            let mut group = Vec::with_capacity(32);
+
+            if let Some(children) = scene.object_and_children(*id) {
+                for child in children {
+                    let object = scene.find_object_by_id(*child).unwrap();
+                    let renderers = object.find_components_by_type::<StaticMeshRenderer>();
+
+                    for renderer in renderers {
+                        if !renderer.has_group() {
+                            continue;
+                        }
+
+                        group.push((*child, renderer))
+                    }
+                }
+            }
+
+            group
+                .sort_by_cached_key(|(_, renderer)| renderer.material().render_state().group_order);
+            groups.push(group);
+        }
+
+        for group in groups {
+            for (id, renderer) in group {
+                let transform_matrix = scene.transform_matrix(id).unwrap();
+
                 if let Some(command) = build_render_command_static_mesh_renderer(
                     ctx.gfx_ctx(),
                     transform_matrix,

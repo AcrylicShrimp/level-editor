@@ -1,9 +1,9 @@
 use super::{Shader, Texture};
 use crate::gfx::GfxContext;
-use lvl_math::{Mat4, Vec2, Vec3, Vec4};
+use lvl_math::{Vec2, Vec3, Vec4};
 use lvl_resource::{
-    MaterialPropertyValueUniformKind, MaterialSource, ResourceFile, ShaderBindingElementKind,
-    ShaderSource, TextureKind, TextureSource,
+    MaterialPropertyValueUniformKind, MaterialRenderState, MaterialSource, ResourceFile,
+    ShaderBindingElementKind, ShaderSource, TextureKind, TextureSource,
 };
 use std::{
     cell::{RefCell, RefMut},
@@ -20,6 +20,7 @@ use zerocopy::AsBytes;
 #[derive(Debug)]
 pub struct Material {
     shader: Shader,
+    render_state: MaterialRenderState,
     uniform_buffer: Option<Buffer>,
     bind_groups: RefCell<Vec<Option<BindGroup>>>,
     properties: Vec<MaterialProperty>,
@@ -162,6 +163,7 @@ impl Material {
 
         Self {
             shader,
+            render_state: source.render_state().clone(),
             uniform_buffer,
             bind_groups: RefCell::new(bind_groups),
             properties,
@@ -171,6 +173,10 @@ impl Material {
 
     pub fn shader(&self) -> &Shader {
         &self.shader
+    }
+
+    pub fn render_state(&self) -> &MaterialRenderState {
+        &self.render_state
     }
 
     pub fn set_property(&mut self, name: &str, value: MaterialPropertyValue) -> bool {

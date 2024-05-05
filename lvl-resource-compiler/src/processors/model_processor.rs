@@ -3,23 +3,35 @@ use anyhow::Error as AnyError;
 use lvl_math::{Quat, Vec3};
 use lvl_pmx::Pmx;
 use lvl_resource::{
-    ModelElement, ModelSource, ModelTransform, ModelVisiblePart, Resource, ResourceKind,
+    MaterialRenderType, ModelElement, ModelSource, ModelTransform, ModelVisiblePart, Resource,
+    ResourceKind,
 };
-use std::path::Path;
+use serde::Deserialize;
+use std::{collections::BTreeMap, path::Path};
+
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
+pub struct ModelMetadata {
+    pub material_descriptions: BTreeMap<String, ModelMetadataMaterialDescription>,
+}
+
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
+pub struct ModelMetadataMaterialDescription {
+    pub render_type: MaterialRenderType,
+}
 
 pub struct ModelProcessor;
 
 impl Processor for ModelProcessor {
-    type Metadata = ();
+    type Metadata = ModelMetadata;
 
     fn extension() -> &'static [&'static str] {
         &["pmx"]
     }
 
-    fn process(file: &Path, _metadata: Option<&Self::Metadata>) -> Result<Vec<Resource>, AnyError> {
+    fn process(file: &Path, metadata: Option<&Self::Metadata>) -> Result<Vec<Resource>, AnyError> {
         let content = std::fs::read(file)?;
         let pmx: Pmx = Pmx::parse(&content)?;
-        let splitted = pmx::split_pmx(file, &pmx);
+        let splitted = pmx::split_pmx(file, &pmx, metadata);
         let mut resources = splitted.resources;
 
         resources.push(Resource {
@@ -52,16 +64,18 @@ impl Processor for ModelProcessor {
 }
 
 mod pmx {
+    use super::ModelMetadata;
     use crate::processors::{ShaderProcessor, TextureMetadata, TextureProcessor};
     use anyhow::{anyhow, Error as AnyError};
     use log::{error, warn};
     use lvl_math::{Vec3, Vec4};
     use lvl_pmx::{Pmx, PmxIndices, PmxMaterial, PmxTexture, PmxVertex};
     use lvl_resource::{
-        MaterialProperty, MaterialPropertyValue, MaterialPropertyValueUniformKind, MaterialSource,
-        MeshElement, MeshElementKind, MeshIndexKind, MeshSource, Resource, ResourceKind,
-        ShaderSource, TextureElementSamplingMode, TextureElementTextureFormat,
-        TextureElementWrappingMode, TextureSource,
+        MaterialProperty, MaterialPropertyValue, MaterialPropertyValueUniformKind,
+        MaterialRenderState, MaterialRenderType, MaterialSource, MeshElement, MeshElementKind,
+        MeshIndexKind, MeshSource, Resource, ResourceKind, ShaderSource,
+        TextureElementSamplingMode, TextureElementTextureFormat, TextureElementWrappingMode,
+        TextureSource,
     };
     use std::{
         collections::{hash_map::Entry, BTreeSet, HashMap},
@@ -81,7 +95,7 @@ mod pmx {
         pub mesh_name: String,
     }
 
-    pub fn split_pmx(pmx_path: &Path, pmx: &Pmx) -> SplittedPmx {
+    pub fn split_pmx(pmx_path: &Path, pmx: &Pmx, metadata: Option<&ModelMetadata>) -> SplittedPmx {
         let mut resources = Vec::with_capacity(pmx.materials.len() * 4);
         let mut visible_parts = Vec::with_capacity(pmx.materials.len() * 2);
         let mut texture_names = BTreeSet::new();
@@ -124,7 +138,7 @@ mod pmx {
             }
         }
 
-        for material in &pmx.materials {
+        for (index, material) in pmx.materials.iter().enumerate() {
             let texture_source_name = if 0 <= material.texture_index.get() {
                 Some(format!(
                     "{}/texture:{}",
@@ -161,12 +175,21 @@ mod pmx {
             };
 
             let material_source = make_material_source(
+                index,
                 if texture_source_name.is_some() {
                     textured_shader_name.clone()
                 } else {
                     non_textured_shader_name.clone()
                 },
                 texture_source_name.clone(),
+                metadata
+                    .and_then(|metadata| {
+                        metadata
+                            .material_descriptions
+                            .get(&material.name_local)
+                            .map(|description| description.render_type)
+                    })
+                    .unwrap_or(MaterialRenderType::Opaque),
                 material,
             );
             let mesh_source = make_mesh(
@@ -238,8 +261,10 @@ mod pmx {
     }
 
     fn make_material_source(
+        material_order: usize,
         shader_name: String,
         texture_name: Option<String>,
+        render_type: MaterialRenderType,
         pmx_material: &PmxMaterial,
     ) -> MaterialSource {
         let mut properties = vec![];
@@ -322,7 +347,22 @@ mod pmx {
             )),
         });
 
-        MaterialSource::new(shader_name, properties)
+        MaterialSource::new(
+            shader_name,
+            MaterialRenderState {
+                render_type,
+                no_cull_back_face: pmx_material.flags.no_cull_back_face,
+                cast_shadow_on_ground: pmx_material.flags.cast_shadow_on_ground,
+                cast_shadow_on_object: pmx_material.flags.cast_shadow_on_object,
+                receive_shadow: pmx_material.flags.receive_shadow,
+                has_edge: pmx_material.flags.has_edge,
+                vertex_color: pmx_material.flags.vertex_color,
+                point_drawing: pmx_material.flags.point_drawing,
+                line_drawing: pmx_material.flags.line_drawing,
+                group_order: material_order as u32,
+            },
+            properties,
+        )
     }
 
     fn make_mesh(

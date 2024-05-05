@@ -1,7 +1,10 @@
 use lvl_core::{
     gfx::elements::{Material, StaticMesh},
     scene::{
-        components::{Camera, CameraClearMode, CameraProjectionMode, StaticMeshRenderer},
+        components::{
+            Camera, CameraClearMode, CameraProjectionMode, StaticMeshRenderer,
+            StaticMeshRendererGroup,
+        },
         ObjectId, SceneProxy, Transform,
     },
 };
@@ -44,7 +47,9 @@ pub fn make_model_object(resource: &ResourceFile, name: &str, scene: &mut SceneP
         }
     }
 
-    element_objects[model.root_element_index() as usize]
+    let root_id = element_objects[model.root_element_index() as usize];
+    scene.add_component(root_id, StaticMeshRendererGroup);
+    root_id
 }
 
 fn make_element_object(
@@ -72,7 +77,10 @@ fn make_element_object(
         let mesh = StaticMesh::load_from_source(mesh_source, scene.context().gfx_ctx());
 
         let visible_part_id = scene.create_object();
-        scene.add_component(visible_part_id, StaticMeshRenderer::new(mesh, material));
+        scene.add_component(
+            visible_part_id,
+            StaticMeshRenderer::new(true, mesh, material),
+        );
         scene.set_parent(visible_part_id, Some(id));
     }
 

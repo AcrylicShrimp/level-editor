@@ -7,7 +7,7 @@ use self::{
 };
 use super::Processor;
 use anyhow::{anyhow, Context, Error as AnyError};
-use lvl_resource::{Resource, ResourceKind, ShaderRenderType, ShaderSource};
+use lvl_resource::{Resource, ResourceKind, ShaderSource};
 use naga::{Module, ShaderStage};
 use std::path::Path;
 
@@ -82,7 +82,6 @@ impl ShaderProcessor {
         let locations = inspect_locations(display_name, &module, instance_input_typename);
 
         Ok(ShaderSource::new(
-            ShaderRenderType::Opaque,
             content,
             vertex_entry_point,
             fragment_entry_point,

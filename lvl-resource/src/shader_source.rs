@@ -5,7 +5,6 @@ use wgpu_types::{SamplerBindingType, TextureSampleType, TextureViewDimension};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ShaderSource {
-    render_type: ShaderRenderType,
     source: String,
     vs_main: String,
     fs_main: String,
@@ -16,7 +15,6 @@ pub struct ShaderSource {
 
 impl ShaderSource {
     pub fn new(
-        render_type: ShaderRenderType,
         source: String,
         vs_main: String,
         fs_main: String,
@@ -25,7 +23,6 @@ impl ShaderSource {
         locations: BTreeMap<String, u32>,
     ) -> Self {
         Self {
-            render_type,
             source,
             vs_main,
             fs_main,
@@ -33,10 +30,6 @@ impl ShaderSource {
             binding_elements,
             locations,
         }
-    }
-
-    pub fn render_type(&self) -> &ShaderRenderType {
-        &self.render_type
     }
 
     pub fn source(&self) -> &str {
@@ -71,12 +64,6 @@ impl FromResourceKind for ShaderSource {
             _ => None,
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ShaderRenderType {
-    Opaque,
-    Transparent,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
