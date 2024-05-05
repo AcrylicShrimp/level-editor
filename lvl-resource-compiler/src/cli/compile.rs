@@ -1,8 +1,9 @@
-use crate::processors::{ModelProcessor, Processor, TextureProcessor};
+use crate::processors::{
+    process_single_file, ModelProcessor, Processor, ShaderProcessor, TextureProcessor,
+};
 use anyhow::{anyhow, Context, Error as AnyError};
 use log::{debug, info, warn};
 use lvl_resource::{Resource, ResourceFile, ResourceFileVersion};
-use serde::Deserialize;
 use std::path::Path;
 
 pub fn compile(
@@ -135,20 +136,28 @@ fn compile_single_file(file: &Path) -> Result<Vec<Resource>, AnyError> {
 
     match extension.to_string_lossy().to_string().as_str() {
         extension if ModelProcessor::extension().contains(&extension) => {
-            Ok(ModelProcessor::process(file, Some(&())).with_context(|| {
+            let processed = process_single_file::<ModelProcessor>(file).with_context(|| {
                 format!("failed to process the file `{}` as a model", file.display())
-            })?)
+            })?;
+            Ok(processed)
+        }
+        extension if ShaderProcessor::extension().contains(&extension) => {
+            let processed = process_single_file::<ShaderProcessor>(file).with_context(|| {
+                format!(
+                    "failed to process the file `{}` as a shader",
+                    file.display()
+                )
+            })?;
+            Ok(processed)
         }
         extension if TextureProcessor::extension().contains(&extension) => {
-            let metadata = load_metadata(file)?;
-            Ok(
-                TextureProcessor::process(file, metadata.as_ref()).with_context(|| {
-                    format!(
-                        "failed to process the file `{}` as a texture",
-                        file.display()
-                    )
-                })?,
-            )
+            let processed = process_single_file::<TextureProcessor>(file).with_context(|| {
+                format!(
+                    "failed to process the file `{}` as a texture",
+                    file.display()
+                )
+            })?;
+            Ok(processed)
         }
         _ => {
             debug!(
@@ -158,47 +167,4 @@ fn compile_single_file(file: &Path) -> Result<Vec<Resource>, AnyError> {
             return Ok(vec![]);
         }
     }
-}
-
-fn load_metadata<T>(file_path: &Path) -> Result<Option<T>, AnyError>
-where
-    T: for<'de> Deserialize<'de>,
-{
-    let metadata_extension = match file_path.extension() {
-        Some(extension) => format!("{}.meta", extension.to_string_lossy().to_string()),
-        None => "meta".to_owned(),
-    };
-    let metadata_path = file_path.with_extension(metadata_extension);
-
-    if !metadata_path.is_file() {
-        debug!(
-            "the metadata `{}` does not exist. skipping.",
-            metadata_path.display()
-        );
-        return Ok(None);
-    }
-
-    let content = match std::fs::read_to_string(&metadata_path) {
-        Ok(content) => content,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            debug!(
-                "the metadata `{}` does not exist. skipping.",
-                metadata_path.display()
-            );
-            return Ok(None);
-        }
-        Err(err) => {
-            warn!(
-                "failed to read the metadata `{}`: {}",
-                metadata_path.display(),
-                err
-            );
-            return Ok(None);
-        }
-    };
-
-    let metadata = serde_json::from_str(&content)
-        .with_context(|| format!("parsing the metadata `{}`", metadata_path.display()))?;
-
-    Ok(Some(metadata))
 }

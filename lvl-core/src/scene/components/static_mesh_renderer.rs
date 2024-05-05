@@ -126,10 +126,7 @@ impl StaticMeshRenderer {
                 },
                 primitive: PrimitiveState {
                     topology: PrimitiveTopology::TriangleList,
-                    strip_index_format: Some(match self.mesh.index_kind() {
-                        MeshIndexKind::U16 => IndexFormat::Uint16,
-                        MeshIndexKind::U32 => IndexFormat::Uint32,
-                    }),
+                    strip_index_format: None,
                     front_face: FrontFace::Cw,
                     cull_mode: Some(Face::Back),
                     unclipped_depth: false,
@@ -153,7 +150,7 @@ impl StaticMeshRenderer {
                     module: self.material.shader().module(),
                     entry_point: &self.material.shader().reflection().fragment_entry_point,
                     targets: &[Some(ColorTargetState {
-                        format: TextureFormat::Rgba8Unorm,
+                        format: TextureFormat::Bgra8UnormSrgb,
                         blend: None,
                         write_mask: ColorWrites::all(),
                     })],

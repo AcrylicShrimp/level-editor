@@ -1,9 +1,9 @@
-use super::Shader;
+use super::{Shader, Texture};
 use crate::gfx::GfxContext;
 use lvl_math::{Vec2, Vec3, Vec4};
 use lvl_resource::{
     MaterialPropertyValueUniformKind, MaterialSource, ResourceFile, ShaderBindingElementKind,
-    ShaderSource,
+    ShaderSource, TextureKind, TextureSource,
 };
 use std::{
     cell::{RefCell, RefMut},
@@ -84,8 +84,18 @@ impl Material {
             let mut value = match source.properties().get(&element.name) {
                 Some(property) => match &property.value {
                     lvl_resource::MaterialPropertyValue::Texture { texture_name } => {
-                        // TODO: load texture and bind it
-                        todo!()
+                        match resource.find::<TextureSource>(texture_name) {
+                            Some(source) => match source.kind() {
+                                TextureKind::Single(element) => {
+                                    let texture = Texture::load_from_source(element, gfx_ctx);
+                                    let texture_view =
+                                        texture.handle().create_view(&Default::default());
+                                    Some(MaterialPropertyValue::Texture(Arc::new(texture_view)))
+                                }
+                                TextureKind::Cubemap { .. } => todo!(),
+                            },
+                            _ => None,
+                        }
                     }
                     lvl_resource::MaterialPropertyValue::Uniform(uniform_kind) => {
                         match uniform_kind {

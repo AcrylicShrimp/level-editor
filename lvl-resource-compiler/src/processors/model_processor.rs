@@ -48,6 +48,7 @@ impl Processor for ModelProcessor {
         });
 
         for part in parts {
+            resources.push(part.shader);
             resources.push(part.material);
             resources.push(part.mesh);
         }
@@ -57,6 +58,7 @@ impl Processor for ModelProcessor {
 }
 
 mod pmx {
+    use crate::processors::ShaderProcessor;
     use lvl_math::{Vec3, Vec4};
     use lvl_pmx::{Pmx, PmxIndices, PmxMaterial, PmxVertex};
     use lvl_resource::{
@@ -70,6 +72,7 @@ mod pmx {
     use zerocopy::AsBytes;
 
     pub struct SplittedPart {
+        pub shader: Resource,
         pub material: Resource,
         pub mesh: Resource,
     }
@@ -79,7 +82,29 @@ mod pmx {
         let mut previous_surface_count = 0;
 
         for material in &pmx.materials {
-            let material_source = make_shader_source(&pmx.header.model_name_local, material);
+            let shader_source_name = format!(
+                "{}/shader:{}",
+                pmx.header.model_name_local, material.name_local
+            );
+            let shader_content = include_str!("../../assets/standard.wgsl");
+            let shader_source = ShaderProcessor::generate_shader_resource_from_wsgl_content(
+                shader_source_name.as_str(),
+                shader_content.to_owned(),
+            );
+            let shader_source = match shader_source {
+                Ok(source) => source,
+                Err(_) => {
+                    todo!()
+                }
+            };
+            let shader_source = match shader_source {
+                Some(source) => source,
+                None => {
+                    todo!()
+                }
+            };
+
+            let material_source = make_material_source(&pmx.header.model_name_local, material);
             let mesh_source = make_mesh(
                 previous_surface_count,
                 material.surface_count as usize,
@@ -87,6 +112,10 @@ mod pmx {
                 &pmx.indices,
             );
 
+            let shader_resource = Resource {
+                name: shader_source_name,
+                kind: ResourceKind::Shader(shader_source),
+            };
             let material_resource = Resource {
                 name: format!(
                     "{}/material:{}",
@@ -102,6 +131,7 @@ mod pmx {
                 kind: ResourceKind::Mesh(mesh_source),
             };
             parts.push(SplittedPart {
+                shader: shader_resource,
                 material: material_resource,
                 mesh: mesh_resource,
             });
@@ -112,7 +142,7 @@ mod pmx {
         parts
     }
 
-    fn make_shader_source(pmx_model_name: &str, pmx_material: &PmxMaterial) -> MaterialSource {
+    fn make_material_source(pmx_model_name: &str, pmx_material: &PmxMaterial) -> MaterialSource {
         let shader_name = format!("{}/shader:{}", pmx_model_name, pmx_material.name_local);
         let mut properties = vec![];
 
