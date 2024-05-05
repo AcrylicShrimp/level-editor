@@ -20,7 +20,13 @@ fn main() {
             let output = matches.get_one::<PathBuf>("output");
 
             if let Err(err) = compile(input, output) {
-                error!("failed to compile resources. error: {}", err);
+                let mut errors = Vec::new();
+
+                for cause in err.chain() {
+                    errors.push(format!("- {}", cause.to_string()));
+                }
+
+                error!("failed to compile resources. error:\n{}", errors.join("\n"));
             }
         }
         _ => unreachable!(),

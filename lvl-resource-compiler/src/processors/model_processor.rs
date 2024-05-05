@@ -18,10 +18,9 @@ impl Processor for ModelProcessor {
 
     fn process(file: &Path, _metadata: Option<&Self::Metadata>) -> Result<Vec<Resource>, AnyError> {
         let content = std::fs::read(file)?;
-        let pmx = Pmx::parse(&content)?;
-
-        let parts = pmx::split_parts(&pmx);
-        let mut resources = Vec::with_capacity(1 + parts.len() * 2);
+        let pmx: Pmx = Pmx::parse(&content)?;
+        let splitted = pmx::split_pmx(file, &pmx);
+        let mut resources = splitted.resources;
 
         resources.push(Resource {
             name: pmx.header.model_name_local.clone(),
@@ -36,77 +35,140 @@ impl Processor for ModelProcessor {
                         rotation: Quat::IDENTITY,
                         scale: Vec3::ONE,
                     },
-                    visible_parts: parts
-                        .iter()
+                    visible_parts: splitted
+                        .visible_parts
+                        .into_iter()
                         .map(|part| ModelVisiblePart {
-                            mesh_name: part.mesh.name.clone(),
-                            material_name: part.material.name.clone(),
+                            mesh_name: part.mesh_name.clone(),
+                            material_name: part.material_name.clone(),
                         })
                         .collect(),
                 }],
             )),
         });
 
-        for part in parts {
-            if let Some(shader) = part.shader {
-                resources.push(shader);
-            }
-
-            resources.push(part.material);
-            resources.push(part.mesh);
-        }
-
         Ok(resources)
     }
 }
 
 mod pmx {
-    use crate::processors::ShaderProcessor;
-    use log::error;
+    use crate::processors::{ShaderProcessor, TextureMetadata, TextureProcessor};
+    use anyhow::{anyhow, Error as AnyError};
+    use log::{error, warn};
     use lvl_math::{Vec3, Vec4};
-    use lvl_pmx::{Pmx, PmxIndices, PmxMaterial, PmxVertex};
+    use lvl_pmx::{Pmx, PmxIndices, PmxMaterial, PmxTexture, PmxVertex};
     use lvl_resource::{
         MaterialProperty, MaterialPropertyValue, MaterialPropertyValueUniformKind, MaterialSource,
         MeshElement, MeshElementKind, MeshIndexKind, MeshSource, Resource, ResourceKind,
+        ShaderSource, TextureElementSamplingMode, TextureElementTextureFormat,
+        TextureElementWrappingMode, TextureSource,
     };
     use std::{
-        collections::{hash_map::Entry, HashMap},
+        collections::{hash_map::Entry, BTreeSet, HashMap},
         mem::size_of,
+        path::Path,
     };
+    use wgpu_types::{AddressMode, FilterMode};
     use zerocopy::AsBytes;
 
-    pub struct SplittedPart {
-        pub shader: Option<Resource>,
-        pub material: Resource,
-        pub mesh: Resource,
+    pub struct SplittedPmx {
+        pub resources: Vec<Resource>,
+        pub visible_parts: Vec<VisiblePart>,
     }
 
-    pub fn split_parts(pmx: &Pmx) -> Vec<SplittedPart> {
-        let mut parts = vec![];
+    pub struct VisiblePart {
+        pub material_name: String,
+        pub mesh_name: String,
+    }
+
+    pub fn split_pmx(pmx_path: &Path, pmx: &Pmx) -> SplittedPmx {
+        let mut resources = Vec::with_capacity(pmx.materials.len() * 4);
+        let mut visible_parts = Vec::with_capacity(pmx.materials.len() * 2);
+        let mut texture_names = BTreeSet::new();
         let mut previous_surface_count = 0;
 
+        let textured_shader_name = format!("{}/shader:{}", pmx.header.model_name_local, "textured");
+        let textured_shader_source = make_textured_shader_source(&textured_shader_name);
+
+        match textured_shader_source {
+            Ok(source) => {
+                resources.push(Resource {
+                    name: textured_shader_name.clone(),
+                    kind: ResourceKind::Shader(source),
+                });
+            }
+            Err(err) => {
+                error!(
+                    "failed to process shader `{}`; it will be ignored: {}",
+                    textured_shader_name, err
+                );
+            }
+        }
+
+        let non_textured_shader_name =
+            format!("{}/shader:{}", pmx.header.model_name_local, "non-textured");
+        let non_textured_shader_source = make_non_textured_shader_source(&non_textured_shader_name);
+
+        match non_textured_shader_source {
+            Ok(source) => {
+                resources.push(Resource {
+                    name: non_textured_shader_name.clone(),
+                    kind: ResourceKind::Shader(source),
+                });
+            }
+            Err(err) => {
+                error!(
+                    "failed to process shader `{}`; it will be ignored: {}",
+                    non_textured_shader_name, err
+                );
+            }
+        }
+
         for material in &pmx.materials {
-            let shader_source_name = format!(
-                "{}/shader:{}",
-                pmx.header.model_name_local, material.name_local
-            );
-            let shader_content = include_str!("../../assets/standard.wgsl");
-            let shader_source = ShaderProcessor::generate_shader_resource_from_wsgl_content(
-                shader_source_name.as_str(),
-                shader_content.to_owned(),
-            );
-            let shader_source = match shader_source {
-                Ok(source) => source,
-                Err(err) => {
-                    error!(
-                        "failed to process shader `{}`; it will be ignored: {}",
-                        shader_source_name, err
-                    );
-                    None
+            let texture_source_name = if 0 <= material.texture_index.get() {
+                Some(format!(
+                    "{}/texture:{}",
+                    pmx.header.model_name_local,
+                    material.texture_index.get()
+                ))
+            } else {
+                None
+            };
+            let texture_source = match texture_source_name.as_ref() {
+                Some(texture_source_name) => {
+                    if texture_names.contains(texture_source_name) {
+                        None
+                    } else {
+                        let pmx_texture = &pmx.textures[material.texture_index.get() as usize];
+                        let texture_source = make_texture(pmx_path, pmx_texture);
+
+                        match texture_source {
+                            Ok(source) => {
+                                texture_names.insert(texture_source_name.clone());
+                                Some(source)
+                            }
+                            Err(err) => {
+                                warn!(
+                                    "failed to process texture `{}`; it will be ignored: {}",
+                                    pmx_texture.path, err
+                                );
+                                None
+                            }
+                        }
+                    }
                 }
+                None => None,
             };
 
-            let material_source = make_material_source(&pmx.header.model_name_local, material);
+            let material_source = make_material_source(
+                if texture_source_name.is_some() {
+                    textured_shader_name.clone()
+                } else {
+                    non_textured_shader_name.clone()
+                },
+                texture_source_name.clone(),
+                material,
+            );
             let mesh_source = make_mesh(
                 previous_surface_count,
                 material.surface_count as usize,
@@ -114,10 +176,13 @@ mod pmx {
                 &pmx.indices,
             );
 
-            let shader_resource = shader_source.map(|source| Resource {
-                name: shader_source_name,
-                kind: ResourceKind::Shader(source),
-            });
+            let texture_resource = match texture_source {
+                Some(source) => Some(Resource {
+                    name: texture_source_name.unwrap(),
+                    kind: ResourceKind::Texture(source),
+                }),
+                None => None,
+            };
             let material_resource = Resource {
                 name: format!(
                     "{}/material:{}",
@@ -132,21 +197,75 @@ mod pmx {
                 ),
                 kind: ResourceKind::Mesh(mesh_source),
             };
-            parts.push(SplittedPart {
-                shader: shader_resource,
-                material: material_resource,
-                mesh: mesh_resource,
+
+            visible_parts.push(VisiblePart {
+                material_name: material_resource.name.clone(),
+                mesh_name: mesh_resource.name.clone(),
             });
+
+            if let Some(resource) = texture_resource {
+                resources.push(resource);
+            }
+
+            resources.push(material_resource);
+            resources.push(mesh_resource);
 
             previous_surface_count += material.surface_count as usize;
         }
 
-        parts
+        SplittedPmx {
+            resources,
+            visible_parts,
+        }
     }
 
-    fn make_material_source(pmx_model_name: &str, pmx_material: &PmxMaterial) -> MaterialSource {
-        let shader_name = format!("{}/shader:{}", pmx_model_name, pmx_material.name_local);
+    fn make_textured_shader_source(shader_display_name: &str) -> Result<ShaderSource, AnyError> {
+        let shader_content = include_str!("../../assets/textured.wgsl");
+        ShaderProcessor::generate_shader_resource_from_wsgl_content(
+            shader_display_name,
+            shader_content.to_owned(),
+        )
+    }
+
+    fn make_non_textured_shader_source(
+        shader_display_name: &str,
+    ) -> Result<ShaderSource, AnyError> {
+        let shader_content = include_str!("../../assets/non-textured.wgsl");
+        ShaderProcessor::generate_shader_resource_from_wsgl_content(
+            shader_display_name,
+            shader_content.to_owned(),
+        )
+    }
+
+    fn make_material_source(
+        shader_name: String,
+        texture_name: Option<String>,
+        pmx_material: &PmxMaterial,
+    ) -> MaterialSource {
         let mut properties = vec![];
+
+        if let Some(texture_name) = texture_name {
+            properties.push(MaterialProperty {
+                name: "texture".to_owned(),
+                value: MaterialPropertyValue::Texture { texture_name },
+            });
+            properties.push(MaterialProperty {
+                name: "texture_sampler".to_owned(),
+                value: MaterialPropertyValue::Sampler {
+                    address_mode_u: AddressMode::ClampToEdge,
+                    address_mode_v: AddressMode::ClampToEdge,
+                    address_mode_w: AddressMode::ClampToEdge,
+                    mag_filter: FilterMode::Linear,
+                    min_filter: FilterMode::Linear,
+                    mipmap_filter: FilterMode::Nearest,
+                    lod_min_clamp: 0.0,
+                    lod_max_clamp: 32.0,
+                    compare: None,
+                    anisotropy_clamp: 1,
+                    border_color: None,
+                },
+            });
+        }
 
         properties.push(MaterialProperty {
             name: "diffuse_color".to_owned(),
@@ -328,6 +447,28 @@ mod pmx {
             indices,
             MeshIndexKind::U32,
             elements,
+        )
+    }
+
+    fn make_texture(pmx_path: &Path, pmx_texture: &PmxTexture) -> Result<TextureSource, AnyError> {
+        let parent_path = match pmx_path.parent() {
+            Some(parent_path) => parent_path,
+            None => {
+                return Err(anyhow!(
+                    "failed to get parent path of PMX file path `{}`",
+                    pmx_path.display()
+                ));
+            }
+        };
+
+        TextureProcessor::generate_texture_source(
+            &parent_path.join(&pmx_texture.path),
+            &TextureMetadata {
+                texture_format: TextureElementTextureFormat::RGBA8Unorm,
+                sampling_mode: Some(TextureElementSamplingMode::Bilinear),
+                wrapping_mode_u: Some(TextureElementWrappingMode::Clamp),
+                wrapping_mode_v: Some(TextureElementWrappingMode::Clamp),
+            },
         )
     }
 }

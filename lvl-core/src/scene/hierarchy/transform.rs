@@ -25,6 +25,15 @@ impl Transform {
         }
     }
 
+    pub fn look_at(eye: Vec3, target: Vec3, up: Vec3) -> Self {
+        let (position, rotation, scale) = Mat4::look_at(eye, target, up).split();
+        Self {
+            position,
+            rotation,
+            scale,
+        }
+    }
+
     /// Returns the transform matrix that transforms from local space to world space.
     /// This matrix does not include the parent transforms.
     pub fn matrix(&self) -> Mat4 {

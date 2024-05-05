@@ -18,6 +18,23 @@ pub struct TextureMetadata {
 
 pub struct TextureProcessor;
 
+impl TextureProcessor {
+    pub fn generate_texture_source(
+        file: &Path,
+        metadata: &TextureMetadata,
+    ) -> Result<TextureSource, AnyError> {
+        let element = make_texture_element(
+            file,
+            metadata.texture_format,
+            metadata.sampling_mode,
+            metadata.wrapping_mode_u,
+            metadata.wrapping_mode_v,
+        )?;
+
+        Ok(TextureSource::new(TextureKind::Single(element)))
+    }
+}
+
 impl Processor for TextureProcessor {
     type Metadata = TextureMetadata;
 
@@ -30,20 +47,17 @@ impl Processor for TextureProcessor {
         let metadata = match metadata {
             Some(metadata) => metadata,
             None => {
-                return Err(anyhow!("metadata not found"));
+                return Err(anyhow!(
+                    "metadata not found for texture `{}`; it will be ignored.",
+                    file.display()
+                ));
             }
         };
-        let element = make_texture_element(
-            file,
-            metadata.texture_format,
-            metadata.sampling_mode,
-            metadata.wrapping_mode_u,
-            metadata.wrapping_mode_v,
-        )?;
+        let source = Self::generate_texture_source(file, metadata)?;
 
         Ok(vec![Resource {
             name,
-            kind: ResourceKind::Texture(TextureSource::new(TextureKind::Single(element))),
+            kind: ResourceKind::Texture(source),
         }])
     }
 }

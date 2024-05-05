@@ -32,6 +32,6 @@ fn vs_main(instance: InstanceInput, vertex: VertexInput) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> FragmentOutput {
   var out: FragmentOutput;
-  out.color = in.color;
+  out.color = vec4<f32>(in.uv.x, 0.0, in.uv.y, 1.0);
   return out;
 }

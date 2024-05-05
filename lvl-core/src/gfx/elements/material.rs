@@ -13,7 +13,7 @@ use std::{
 };
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Buffer, BufferBinding,
-    BufferDescriptor, BufferUsages, Queue, Sampler, TextureView,
+    BufferDescriptor, BufferUsages, Queue, Sampler, SamplerDescriptor, TextureView,
 };
 use zerocopy::AsBytes;
 
@@ -96,6 +96,35 @@ impl Material {
                             },
                             _ => None,
                         }
+                    }
+                    lvl_resource::MaterialPropertyValue::Sampler {
+                        address_mode_u,
+                        address_mode_v,
+                        address_mode_w,
+                        mag_filter,
+                        min_filter,
+                        mipmap_filter,
+                        lod_min_clamp,
+                        lod_max_clamp,
+                        compare,
+                        anisotropy_clamp,
+                        border_color,
+                    } => {
+                        let sampler = gfx_ctx.device.create_sampler(&SamplerDescriptor {
+                            label: None,
+                            address_mode_u: *address_mode_u,
+                            address_mode_v: *address_mode_v,
+                            address_mode_w: *address_mode_w,
+                            mag_filter: *mag_filter,
+                            min_filter: *min_filter,
+                            mipmap_filter: *mipmap_filter,
+                            lod_min_clamp: *lod_min_clamp,
+                            lod_max_clamp: *lod_max_clamp,
+                            compare: *compare,
+                            anisotropy_clamp: *anisotropy_clamp,
+                            border_color: *border_color,
+                        });
+                        Some(MaterialPropertyValue::Sampler(Arc::new(sampler)))
                     }
                     lvl_resource::MaterialPropertyValue::Uniform(uniform_kind) => {
                         match uniform_kind {

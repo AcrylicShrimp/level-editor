@@ -2,7 +2,7 @@ use crate::processors::{
     process_single_file, ModelProcessor, Processor, ShaderProcessor, TextureProcessor,
 };
 use anyhow::{anyhow, Context, Error as AnyError};
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use lvl_resource::{Resource, ResourceFile, ResourceFileVersion};
 use std::path::Path;
 
@@ -93,7 +93,24 @@ pub fn compile(
 
                 debug!("entry `{}` is a file. processing.", entry.path().display());
 
-                let processed = compile_single_file(&entry.path())?;
+                let processed = match compile_single_file(&entry.path()) {
+                    Ok(processed) => processed,
+                    Err(err) => {
+                        let mut errors = Vec::new();
+
+                        for cause in err.chain() {
+                            errors.push(format!("- {}", cause.to_string()));
+                        }
+
+                        error!(
+                            "failed to process the file `{}`. error:\n{}",
+                            entry.path().display(),
+                            errors.join("\n")
+                        );
+                        continue;
+                    }
+                };
+
                 resources.extend(processed);
             }
         }
@@ -121,6 +138,8 @@ pub fn compile(
             output.display()
         )
     })?;
+
+    info!("compilation finished.");
 
     Ok(())
 }

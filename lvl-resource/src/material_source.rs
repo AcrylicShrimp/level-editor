@@ -2,6 +2,7 @@ use crate::{FromResourceKind, ResourceKind};
 use lvl_math::{Vec2, Vec3, Vec4};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use wgpu_types::{AddressMode, CompareFunction, FilterMode, SamplerBorderColor};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MaterialSource {
@@ -43,7 +44,22 @@ pub struct MaterialProperty {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MaterialPropertyValue {
-    Texture { texture_name: String },
+    Texture {
+        texture_name: String,
+    },
+    Sampler {
+        address_mode_u: AddressMode,
+        address_mode_v: AddressMode,
+        address_mode_w: AddressMode,
+        mag_filter: FilterMode,
+        min_filter: FilterMode,
+        mipmap_filter: FilterMode,
+        lod_min_clamp: f32,
+        lod_max_clamp: f32,
+        compare: Option<CompareFunction>,
+        anisotropy_clamp: u16,
+        border_color: Option<SamplerBorderColor>,
+    },
     Uniform(MaterialPropertyValueUniformKind),
 }
 
