@@ -24,7 +24,12 @@ pub fn build_render_command_static_mesh_renderer<'mesh>(
             return None;
         }
     };
-    let instance_buffer = instance_data_provider.create_instance_buffer(transform_matrix);
+    let instance_buffer = instance_data_provider.create_instance_buffer(
+        transform_matrix,
+        &gfx_ctx.per_frame_buffer_pool,
+        &gfx_ctx.device,
+        &gfx_ctx.queue,
+    );
 
     Some(RenderCommand::new(
         renderer

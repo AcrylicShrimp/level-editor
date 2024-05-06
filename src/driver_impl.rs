@@ -1,10 +1,10 @@
-use crate::object::{make_camera_object, make_model_object};
+use crate::object::{make_camera_object, make_light_object, make_model_object};
 use lvl_core::{
     context::{driver::Driver, Context},
     resource::load_resource_file,
-    scene::{ObjectId, Scene, Transform},
+    scene::{components::LightKind, ObjectId, Scene, Transform},
 };
-use lvl_math::{Mat4, Quat, Vec3, Vec4};
+use lvl_math::{Quat, Vec3, Vec4};
 use lvl_resource::ResourceFile;
 use winit::{
     keyboard::{KeyCode, PhysicalKey},
@@ -70,9 +70,6 @@ impl Driver for DriverImpl {
                 scene,
             );
             self.camera_id = Some(camera_id);
-
-            make_model_object(self.resource.as_ref().unwrap(), "モナ・Mona", scene);
-
             scene.set_transform(
                 camera_id,
                 Transform::look_at(
@@ -80,6 +77,23 @@ impl Driver for DriverImpl {
                     Vec3::new(0.0, 15.0, 0.0),
                     Vec3::new(0.0, 1.0, 0.0),
                 ),
+            );
+
+            make_model_object(self.resource.as_ref().unwrap(), "モナ・Mona", scene);
+
+            make_light_object(
+                Vec3::new(10.0, 20.0, 10.0),
+                LightKind::Directional {
+                    direction: Vec3::new(0.2, -1.0, 0.2).normalized(),
+                },
+                Vec3::new(1.0, 0.0, 0.0),
+                scene,
+            );
+            make_light_object(
+                Vec3::new(-5.0, 1.0, -2.0),
+                LightKind::Point,
+                Vec3::new(0.0, 0.0, 1.0),
+                scene,
             );
         });
     }

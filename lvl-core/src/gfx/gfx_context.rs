@@ -1,4 +1,4 @@
-use super::{DepthStencil, DepthStencilMode, Frame, UniformBindGroupProvider};
+use super::{DepthStencil, DepthStencilMode, Frame, PerFrameBufferPool, UniformBindGroupProvider};
 use std::cell::RefCell;
 use thiserror::Error;
 use wgpu::{
@@ -27,6 +27,7 @@ pub struct GfxContext<'window> {
     pub surface: Surface<'window>,
     pub surface_config: RefCell<SurfaceConfiguration>,
     pub depth_stencil: RefCell<DepthStencil>,
+    pub per_frame_buffer_pool: PerFrameBufferPool,
     pub uniform_bind_group_provider: UniformBindGroupProvider,
 }
 
@@ -85,6 +86,8 @@ impl<'window> GfxContext<'window> {
         let depth_stencil =
             DepthStencil::new(window_inner_size, DepthStencilMode::DepthOnly, &device).unwrap();
 
+        let per_frame_buffer_pool = PerFrameBufferPool::new();
+
         let uniform_bind_group_provider = UniformBindGroupProvider::new(&device);
 
         Ok(GfxContext {
@@ -94,12 +97,9 @@ impl<'window> GfxContext<'window> {
             surface,
             surface_config,
             depth_stencil: RefCell::new(depth_stencil),
+            per_frame_buffer_pool,
             uniform_bind_group_provider,
         })
-    }
-
-    pub fn uniform_bind_group_provider(&self) -> &UniformBindGroupProvider {
-        &self.uniform_bind_group_provider
     }
 
     pub fn resize(&self, size: PhysicalSize<u32>) {
@@ -115,6 +115,8 @@ impl<'window> GfxContext<'window> {
     }
 
     pub fn begin_frame(&self) -> Frame {
+        self.per_frame_buffer_pool.reset();
+
         let cmd_encoder = self
             .device
             .create_command_encoder(&CommandEncoderDescriptor {

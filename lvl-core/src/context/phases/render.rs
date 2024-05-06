@@ -51,7 +51,7 @@ pub fn render(
             );
 
             ctx.gfx_ctx()
-                .uniform_bind_group_provider()
+                .uniform_bind_group_provider
                 .update_camera_matrix(&camera_projection_matrix, &ctx.gfx_ctx().queue);
 
             render_pass_stage_opaque(ctx, camera_id, &surface_texture_view, &mut frame, proxy);
@@ -199,7 +199,7 @@ fn render_pass_stage_opaque(
         }),
     );
 
-    let bind_group = ctx.gfx_ctx().uniform_bind_group_provider().bind_group();
+    let bind_group = ctx.gfx_ctx().uniform_bind_group_provider.bind_group();
 
     for command in &commands {
         command.render(&mut render_pass, bind_group);

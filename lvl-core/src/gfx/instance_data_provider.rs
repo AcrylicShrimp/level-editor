@@ -1,9 +1,7 @@
+use super::{BufferSlicer, PerFrameBufferPool};
 use lvl_math::Mat4;
-use std::mem::size_of;
-use wgpu::{
-    util::{BufferInitDescriptor, DeviceExt},
-    Buffer, BufferUsages, Device, VertexAttribute, VertexFormat,
-};
+use std::{mem::size_of, num::NonZeroU64};
+use wgpu::{Device, Queue, VertexAttribute, VertexFormat};
 use zerocopy::AsBytes;
 
 pub struct InstanceDataProvider<'device> {
@@ -44,11 +42,20 @@ impl<'device> InstanceDataProvider<'device> {
         ]
     }
 
-    pub fn create_instance_buffer(&self, matrix: &Mat4) -> Buffer {
-        self.device.create_buffer_init(&BufferInitDescriptor {
-            label: None,
-            contents: matrix.as_bytes(),
-            usage: BufferUsages::VERTEX,
-        })
+    pub fn create_instance_buffer(
+        &self,
+        matrix: &Mat4,
+        buffer_pool: &PerFrameBufferPool,
+        device: &Device,
+        queue: &Queue,
+    ) -> BufferSlicer {
+        let size = NonZeroU64::new(self.instance_data_size() as u64).unwrap();
+        let slicer = buffer_pool.allocate(size, device);
+
+        if let Some(mut view) = queue.write_buffer_with(slicer.buffer(), slicer.offset(), size) {
+            view.copy_from_slice(matrix.as_bytes());
+        }
+
+        slicer
     }
 }

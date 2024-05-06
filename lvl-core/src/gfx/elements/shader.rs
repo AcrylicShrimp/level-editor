@@ -87,7 +87,7 @@ impl Shader {
 
         let mut layouts_with_builtin_bind_group = layouts.clone();
         layouts_with_builtin_bind_group
-            .insert(0, gfx_ctx.uniform_bind_group_provider().bind_group_layout());
+            .insert(0, gfx_ctx.uniform_bind_group_provider.bind_group_layout());
 
         let pipeline_layout = gfx_ctx
             .device

@@ -2,7 +2,7 @@ use lvl_core::{
     gfx::elements::{Material, MaterialPropertyValue, StaticMesh},
     scene::{
         components::{
-            Camera, CameraClearMode, CameraProjectionMode, StaticMeshRenderer,
+            Camera, CameraClearMode, CameraProjectionMode, Light, LightKind, StaticMeshRenderer,
             StaticMeshRendererGroup,
         },
         ObjectId, SceneProxy, Transform,
@@ -92,6 +92,26 @@ fn make_element_object(
         );
         scene.set_parent(visible_part_id, Some(id));
     }
+
+    id
+}
+
+pub fn make_light_object(
+    position: Vec3,
+    kind: LightKind,
+    light_color: Vec3,
+    scene: &mut SceneProxy,
+) -> ObjectId {
+    let id = scene.create_object();
+
+    scene.set_transform(
+        id,
+        Transform {
+            position,
+            ..Default::default()
+        },
+    );
+    scene.add_component(id, Light { kind, light_color });
 
     id
 }

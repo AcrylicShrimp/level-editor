@@ -1,5 +1,6 @@
+use crate::gfx::BufferSlicer;
 use std::cell::RefMut;
-use wgpu::{BindGroup, Buffer, BufferSlice, IndexFormat, RenderPass, RenderPipeline};
+use wgpu::{BindGroup, BufferSlice, IndexFormat, RenderPass, RenderPipeline};
 
 pub struct RenderCommand<'a> {
     builtin_uniform_bind_group: Option<u32>,
@@ -7,7 +8,7 @@ pub struct RenderCommand<'a> {
     bind_groups: RefMut<'a, Vec<Option<BindGroup>>>,
     vertex_buffer_slice: BufferSlice<'a>,
     // TODO: optimize this; allocating a small buffer per frame is not efficient
-    instance_buffer: Buffer,
+    instance_buffer: BufferSlicer,
     index_buffer_slice: BufferSlice<'a>,
     index_format: IndexFormat,
     count: u32,
@@ -19,7 +20,7 @@ impl<'a> RenderCommand<'a> {
         pipeline: RefMut<'a, Option<RenderPipeline>>,
         bind_groups: RefMut<'a, Vec<Option<BindGroup>>>,
         vertex_buffer_slice: BufferSlice<'a>,
-        instance_buffer: Buffer,
+        instance_buffer: BufferSlicer,
         index_buffer_slice: BufferSlice<'a>,
         index_format: IndexFormat,
         count: u32,
@@ -62,7 +63,7 @@ impl<'a> RenderCommand<'a> {
             render_pass.set_bind_group(group as u32, bind_group, &[]);
         }
 
-        render_pass.set_vertex_buffer(0, self.instance_buffer.slice(..));
+        render_pass.set_vertex_buffer(0, self.instance_buffer.slice());
         render_pass.set_vertex_buffer(1, self.vertex_buffer_slice);
         render_pass.set_index_buffer(self.index_buffer_slice, self.index_format);
 

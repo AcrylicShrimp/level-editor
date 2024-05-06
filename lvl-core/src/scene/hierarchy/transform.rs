@@ -46,3 +46,9 @@ impl Transform {
         Mat4::trs(-self.position, -self.rotation, Vec3::recip(self.scale))
     }
 }
+
+impl Default for Transform {
+    fn default() -> Self {
+        Self::identity()
+    }
+}

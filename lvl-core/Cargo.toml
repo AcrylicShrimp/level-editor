@@ -10,6 +10,7 @@ bincode = "1"
 bitvec = "1"
 lvl-math = { path = "../lvl-math" }
 lvl-resource = { path = "../lvl-resource" }
+parking_lot = "0.12"
 pollster = "0.3"
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
