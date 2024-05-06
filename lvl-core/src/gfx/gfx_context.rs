@@ -1,4 +1,4 @@
-use super::{DepthStencil, DepthStencilMode, Frame, PerFrameBufferPool, UniformBindGroupProvider};
+use super::{Frame, GlobalTextureSet, PerFrameBufferPool, UniformBindGroupProvider};
 use std::cell::RefCell;
 use thiserror::Error;
 use wgpu::{
@@ -26,7 +26,7 @@ pub struct GfxContext<'window> {
     pub queue: Queue,
     pub surface: Surface<'window>,
     pub surface_config: RefCell<SurfaceConfiguration>,
-    pub depth_stencil: RefCell<DepthStencil>,
+    pub global_texture_set: RefCell<GlobalTextureSet>,
     pub per_frame_buffer_pool: PerFrameBufferPool,
     pub uniform_bind_group_provider: UniformBindGroupProvider,
 }
@@ -83,11 +83,8 @@ impl<'window> GfxContext<'window> {
         });
         surface.configure(&device, &surface_config.borrow());
 
-        let depth_stencil =
-            DepthStencil::new(window_inner_size, DepthStencilMode::DepthOnly, &device).unwrap();
-
+        let global_texture_set = RefCell::new(GlobalTextureSet::new(&device, window_inner_size));
         let per_frame_buffer_pool = PerFrameBufferPool::new();
-
         let uniform_bind_group_provider = UniformBindGroupProvider::new(&device);
 
         Ok(GfxContext {
@@ -96,7 +93,7 @@ impl<'window> GfxContext<'window> {
             queue,
             surface,
             surface_config,
-            depth_stencil: RefCell::new(depth_stencil),
+            global_texture_set,
             per_frame_buffer_pool,
             uniform_bind_group_provider,
         })
@@ -106,8 +103,11 @@ impl<'window> GfxContext<'window> {
         let mut surface_config = self.surface_config.borrow_mut();
         surface_config.width = size.width;
         surface_config.height = size.height;
+
         self.surface.configure(&self.device, &surface_config);
-        self.depth_stencil.borrow_mut().resize(size, &self.device);
+        self.global_texture_set
+            .borrow_mut()
+            .resize(&self.device, size);
     }
 
     pub fn obtain_surface_view(&self) -> Result<SurfaceTexture, SurfaceError> {

@@ -85,7 +85,6 @@ fn render_pass_stage_opaque(
         scene.transform_matrix(camera_id).unwrap() * Vec4::new(0.0, 0.0, 0.0, 1.0);
 
     let mut commands = Vec::new();
-    let instance_data_provider = InstanceDataProvider::new(&ctx.gfx_ctx().device);
 
     // no-group renderers
     if let Some(ids) = scene.find_object_ids_by_component_type::<StaticMeshRenderer>() {
@@ -118,7 +117,7 @@ fn render_pass_stage_opaque(
                 ctx.gfx_ctx(),
                 transform_matrix,
                 renderer,
-                &instance_data_provider,
+                &InstanceDataProvider,
             ) {
                 commands.push(command);
             }
@@ -160,7 +159,7 @@ fn render_pass_stage_opaque(
                     ctx.gfx_ctx(),
                     transform_matrix,
                     renderer,
-                    &instance_data_provider,
+                    &InstanceDataProvider,
                 ) {
                     commands.push(command);
                 }
@@ -168,8 +167,8 @@ fn render_pass_stage_opaque(
         }
     }
 
-    let depth_stencil = ctx.gfx_ctx().depth_stencil.borrow();
-    let depth_texture_view = depth_stencil.texture_view().unwrap();
+    let global_texture_set = ctx.gfx_ctx().global_texture_set.borrow();
+    let depth_texture_view = &global_texture_set.depth_stencil.texture_view;
 
     let mut render_pass = frame.begin_render_pass(
         match camera.clear_mode {

@@ -4,15 +4,9 @@ use std::{mem::size_of, num::NonZeroU64};
 use wgpu::{Device, Queue, VertexAttribute, VertexFormat};
 use zerocopy::AsBytes;
 
-pub struct InstanceDataProvider<'device> {
-    device: &'device Device,
-}
+pub struct InstanceDataProvider;
 
-impl<'device> InstanceDataProvider<'device> {
-    pub fn new(device: &'device Device) -> Self {
-        Self { device }
-    }
-
+impl InstanceDataProvider {
     pub fn instance_data_size(&self) -> u32 {
         size_of::<[[f32; 4]; 4]>() as u32
     }
