@@ -64,7 +64,10 @@ pub fn compile(
 
     let gitignore_path = input.join(".gitignore");
     let gitignore_file = if gitignore_path.is_file() {
-        debug!("gitignore file found. parsing.");
+        info!(
+            "gitignore file found at `{}`. it will be used to exclude directories and/or files.",
+            gitignore_path.display()
+        );
         Some(gitignore::File::new(&gitignore_path)?)
     } else {
         None
