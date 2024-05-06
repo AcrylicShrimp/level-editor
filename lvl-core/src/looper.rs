@@ -134,12 +134,7 @@ impl<'window> Looper<'window> {
                 }
 
                 last_frame_time = now;
-
-                // TODO: update time manager
-                // {
-                //     let mut time_mgr = self.ctx.time_mgr_mut();
-                //     time_mgr.update();
-                // }
+                self.ctx.time_mut().update();
 
                 // {
                 //     let mut input_mgr = self.ctx.input_mgr_mut();
@@ -159,6 +154,9 @@ impl<'window> Looper<'window> {
 
                 scene.prepare_render();
                 phases::render::render(&window, &self.ctx, &mut scene, &mut self.driver);
+
+                self.ctx.input_mut().reset_current_frame_state();
+
                 return;
             }
             Event::WindowEvent {
@@ -177,7 +175,8 @@ impl<'window> Looper<'window> {
                 event: WindowEvent::KeyboardInput { event, .. },
                 window_id: id,
             } if id == window_id => {
-                // TODO: handle keyboard input
+                self.ctx.input_mut().handle_key_event(&event);
+
                 return;
             }
             Event::WindowEvent {

@@ -20,7 +20,7 @@ pub fn make_camera_object(order: i64, clear_color: Vec4, scene: &mut SceneProxy)
             order,
             clear_mode: CameraClearMode::All { color: clear_color },
             projection_mode: CameraProjectionMode::Perspective {
-                fov: 45.0,
+                fov: (90.0f32).to_radians(),
                 near: 0.1,
                 far: 100.0,
             },
@@ -82,7 +82,7 @@ fn make_element_object(
         );
         material.set_property(
             "light_direction",
-            MaterialPropertyValue::Vec3(Vec3::new(0.5, -1.0, 0.5).normalized()),
+            MaterialPropertyValue::Vec3(Vec3::new(0.5, -0.5, 0.5).normalized()),
         );
 
         let visible_part_id = scene.create_object();

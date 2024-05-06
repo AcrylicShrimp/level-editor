@@ -32,7 +32,7 @@ impl Object {
         self.transform.clone()
     }
 
-    pub(crate) fn transform_matrix(&self) -> Mat4 {
+    pub fn transform_matrix(&self) -> Mat4 {
         self.transform.matrix()
     }
 

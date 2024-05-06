@@ -53,6 +53,7 @@ impl Mat4 {
         ])
     }
 
+    /// Right-handed orthographic projection matrix.
     pub fn orthographic(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> Self {
         Self::new([
             2.0 / (right - left),
@@ -65,7 +66,7 @@ impl Mat4 {
             0.0, //
             0.0,
             0.0,
-            1.0 / (far - near),
+            1.0 / (near - far),
             0.0, //
             (left + right) / (left - right),
             (bottom + top) / (bottom - top),
@@ -74,8 +75,10 @@ impl Mat4 {
         ])
     }
 
+    /// Right-handed perspective projection matrix.
     pub fn perspective(fov: f32, aspect: f32, near: f32, far: f32) -> Self {
         let f = (fov * 0.5).tan().recip();
+        let fnf = far / (near - far);
 
         Self::new([
             f / aspect,
@@ -88,25 +91,26 @@ impl Mat4 {
             0.0, //
             0.0,
             0.0,
-            (far + near) / (near - far),
+            fnf,
             -1.0, //
             0.0,
             0.0,
-            (2.0 * far * near) / (near - far),
+            near * fnf,
             0.0, //
         ])
     }
 
-    /// Returns a matrix that transforms from local space to world space. It's right-handed.
+    /// Right-handed look-at matrix. It places object at `eye` and looks at `target`, with `up` as the up vector.
+    /// All vectors are in world space.
     pub fn look_at(eye: Vec3, target: Vec3, up: Vec3) -> Self {
         let z = (eye - target).normalized();
         let x = Vec3::cross(up, z).normalized();
         let y = Vec3::cross(z, x).normalized();
 
         Self::new([
-            x.x, x.y, x.z, 0.0, //
-            y.x, y.y, y.z, 0.0, //
-            z.x, z.y, z.z, 0.0, //
+            x.x, y.x, z.x, 0.0, //
+            x.y, y.y, z.y, 0.0, //
+            x.z, y.z, z.z, 0.0, //
             eye.x, eye.y, eye.z, 1.0, //
         ])
     }

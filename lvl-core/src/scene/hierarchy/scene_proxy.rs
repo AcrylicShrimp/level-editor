@@ -155,6 +155,28 @@ impl<'scene, 'window> SceneProxy<'scene, 'window> {
         self.hierarchy_storage.is_active_self(object_id)
     }
 
+    pub fn local_to_world_matrix(&self, object_id: ObjectId) -> Option<Mat4> {
+        if !self.object_storage.is_exists(object_id) {
+            return None;
+        }
+
+        let mut matrix = self
+            .object_storage
+            .get(object_id)
+            .unwrap()
+            .transform_matrix();
+
+        for parent_id in self.hierarchy_storage.parents(object_id) {
+            matrix *= self
+                .object_storage
+                .get(*parent_id)
+                .unwrap()
+                .transform_matrix();
+        }
+
+        Some(matrix)
+    }
+
     pub fn transform_matrix(&self, object_id: ObjectId) -> Option<&Mat4> {
         if !self.object_storage.is_exists(object_id) {
             return None;

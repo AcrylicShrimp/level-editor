@@ -1,13 +1,21 @@
 pub mod driver;
+pub mod input;
 pub mod phases;
+pub mod time;
 
+use self::{input::Input, time::Time};
 use crate::gfx::GfxContext;
-use std::{cell::RefCell, sync::Arc};
+use std::{
+    cell::{Ref, RefCell, RefMut},
+    sync::Arc,
+};
 use winit::dpi::PhysicalSize;
 
 pub struct Context<'window> {
     gfx_ctx: Arc<GfxContext<'window>>,
     screen_size: RefCell<PhysicalSize<u32>>,
+    input: RefCell<Input>,
+    time: RefCell<Time>,
 }
 
 impl<'window> Context<'window> {
@@ -15,6 +23,8 @@ impl<'window> Context<'window> {
         Self {
             gfx_ctx: Arc::new(gfx_ctx),
             screen_size: RefCell::new(screen_size),
+            input: RefCell::new(Input::new()),
+            time: RefCell::new(Time::new()),
         }
     }
 
@@ -26,7 +36,23 @@ impl<'window> Context<'window> {
         *self.screen_size.borrow()
     }
 
-    pub fn update_screen_size(&self, screen_size: PhysicalSize<u32>) {
+    pub fn input(&self) -> Ref<Input> {
+        self.input.borrow()
+    }
+
+    pub fn input_mut(&self) -> RefMut<Input> {
+        self.input.borrow_mut()
+    }
+
+    pub fn time(&self) -> Ref<Time> {
+        self.time.borrow()
+    }
+
+    pub fn time_mut(&self) -> RefMut<Time> {
+        self.time.borrow_mut()
+    }
+
+    pub(crate) fn update_screen_size(&self, screen_size: PhysicalSize<u32>) {
         *self.screen_size.borrow_mut() = screen_size;
     }
 }

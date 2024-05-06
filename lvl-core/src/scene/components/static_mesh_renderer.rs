@@ -159,9 +159,10 @@ impl StaticMeshRenderer {
                     conservative: false,
                 },
                 depth_stencil: Some(DepthStencilState {
+                    // TODO: get those details from the render state
                     format: TextureFormat::Depth32Float,
                     depth_write_enabled: true,
-                    depth_compare: CompareFunction::Less,
+                    depth_compare: CompareFunction::LessEqual,
                     stencil: StencilState {
                         front: StencilFaceState::IGNORE,
                         back: StencilFaceState::IGNORE,
