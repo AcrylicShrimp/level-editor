@@ -4,7 +4,10 @@ use crate::processors::{
 use anyhow::{anyhow, Context, Error as AnyError};
 use log::{debug, error, info, warn};
 use lvl_resource::{Resource, ResourceFile, ResourceFileVersion};
-use std::path::Path;
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
 pub fn compile(
     input: Option<impl AsRef<Path>>,
@@ -59,6 +62,22 @@ pub fn compile(
         );
     }
 
+    let gitignore_path = input.join(".gitignore");
+    let gitignore_file = if gitignore_path.is_file() {
+        debug!("gitignore file found. parsing.");
+        Some(gitignore::File::new(&gitignore_path)?)
+    } else {
+        None
+    };
+
+    let included_dirs = gitignore_file
+        .map(|file| file.included_files())
+        .transpose()?;
+    let included_dirs: Option<HashSet<PathBuf>> = match included_dirs {
+        Some(included_dirs) => Some(HashSet::from_iter(included_dirs)),
+        None => None,
+    };
+
     let mut dirs = vec![input];
     let mut resources = Vec::new();
 
@@ -74,26 +93,61 @@ pub fn compile(
 
             for entry in dir_entries {
                 let entry = entry?;
+                let entry_path = entry.path();
                 let metadata = entry.metadata()?;
 
                 if metadata.is_dir() {
-                    let path = entry.path();
-                    debug!("entry `{}` is a directory.", path.display());
-                    added_dirs.push(path);
+                    if let Some(included_dirs) = &included_dirs {
+                        if !included_dirs.contains(&entry_path) {
+                            debug!(
+                                "entry `{}` is excluded by the .gitignore file.",
+                                entry_path.display()
+                            );
+                            continue;
+                        }
+                    }
+
+                    if let Some(name) = entry_path.file_name() {
+                        if name.eq_ignore_ascii_case(".git") {
+                            debug!(
+                                "entry `{}` is a .git directory. skipping.",
+                                entry_path.display()
+                            );
+                            continue;
+                        }
+                    }
+
+                    debug!("entry `{}` is a directory.", entry_path.display());
+                    added_dirs.push(entry_path);
                     continue;
                 }
 
                 if !metadata.is_file() {
+                    debug!("entry `{}` is not a file. skipping.", entry_path.display());
+                    continue;
+                }
+
+                if entry.file_name().eq_ignore_ascii_case(".gitignore") {
                     debug!(
-                        "entry `{}` is not a file. skipping.",
-                        entry.path().display()
+                        "entry `{}` is a .gitignore file. skipping.",
+                        entry_path.display()
                     );
                     continue;
                 }
 
-                debug!("entry `{}` is a file. processing.", entry.path().display());
+                if let Some(included_dirs) = &included_dirs {
+                    if !included_dirs.contains(&entry_path) {
+                        debug!(
+                            "entry `{}` is excluded by the .gitignore file.",
+                            entry_path.display()
+                        );
+                        continue;
+                    }
+                }
 
-                let processed = match compile_single_file(&entry.path()) {
+                debug!("entry `{}` is a file. processing.", entry_path.display());
+
+                let processed = match compile_single_file(&entry_path) {
                     Ok(processed) => processed,
                     Err(err) => {
                         let mut errors = Vec::new();
@@ -104,7 +158,7 @@ pub fn compile(
 
                         error!(
                             "failed to process the file `{}`. error:\n{}",
-                            entry.path().display(),
+                            entry_path.display(),
                             errors.join("\n")
                         );
                         continue;
