@@ -1,12 +1,14 @@
 mod material_source;
 mod mesh_source;
 mod model_source;
+mod pmx_model_source;
 mod shader_source;
 mod texture_source;
 
 pub use material_source::*;
 pub use mesh_source::*;
 pub use model_source::*;
+pub use pmx_model_source::*;
 pub use shader_source::*;
 pub use texture_source::*;
 
@@ -80,6 +82,7 @@ pub enum ResourceKind {
     Material(MaterialSource),
     Mesh(MeshSource),
     Model(ModelSource),
+    PmxModel(PmxModelSource),
     Shader(ShaderSource),
     Texture(TextureSource),
 }
@@ -102,6 +105,13 @@ impl ResourceKind {
     pub fn as_model_source(&self) -> Option<&ModelSource> {
         match self {
             Self::Model(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    pub fn as_pmx_model_source(&self) -> Option<&PmxModelSource> {
+        match self {
+            Self::PmxModel(pmx_model) => Some(pmx_model),
             _ => None,
         }
     }

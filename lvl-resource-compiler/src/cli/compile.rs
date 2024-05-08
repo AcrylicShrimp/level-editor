@@ -1,5 +1,6 @@
 use crate::processors::{
-    process_single_file, ModelProcessor, Processor, ShaderProcessor, TextureProcessor,
+    process_single_file, ModelProcessor, PmxModelProcessor, Processor, ShaderProcessor,
+    TextureProcessor,
 };
 use anyhow::{anyhow, Context, Error as AnyError};
 use log::{debug, error, info, warn};
@@ -211,9 +212,18 @@ fn compile_single_file(file: &Path) -> Result<Vec<Resource>, AnyError> {
     };
 
     match extension.to_string_lossy().to_string().as_str() {
-        extension if ModelProcessor::extension().contains(&extension) => {
-            let processed = process_single_file::<ModelProcessor>(file).with_context(|| {
-                format!("failed to process the file `{}` as a model", file.display())
+        // extension if ModelProcessor::extension().contains(&extension) => {
+        //     let processed = process_single_file::<ModelProcessor>(file).with_context(|| {
+        //         format!("failed to process the file `{}` as a model", file.display())
+        //     })?;
+        //     Ok(processed)
+        // }
+        extension if PmxModelProcessor::extension().contains(&extension) => {
+            let processed = process_single_file::<PmxModelProcessor>(file).with_context(|| {
+                format!(
+                    "failed to process the file `{}` as a PMX model",
+                    file.display()
+                )
             })?;
             Ok(processed)
         }

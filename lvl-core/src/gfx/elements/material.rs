@@ -159,6 +159,9 @@ impl Material {
                         MaterialPropertyValueUniformKind::Vec4(value) => {
                             Some(MaterialPropertyValue::Vec4(*value))
                         }
+                        MaterialPropertyValueUniformKind::U32(value) => {
+                            Some(MaterialPropertyValue::U32(*value))
+                        }
                     },
                 },
                 None => None,
@@ -203,6 +206,9 @@ impl Material {
                         }
                         MaterialPropertyValueUniformKind::Vec4(value) => {
                             Some(MaterialPropertyValue::Vec4(*value))
+                        }
+                        MaterialPropertyValueUniformKind::U32(value) => {
+                            Some(MaterialPropertyValue::U32(*value))
                         }
                     },
                 },
@@ -492,6 +498,7 @@ pub enum MaterialPropertyValue {
     Vec2(Vec2),
     Vec3(Vec3),
     Vec4(Vec4),
+    U32(u32),
 
     // texture values
     Texture(Arc<TextureView>),
@@ -507,6 +514,7 @@ impl MaterialPropertyValue {
             MaterialPropertyValue::Vec2(value) => Some(value.as_bytes()),
             MaterialPropertyValue::Vec3(value) => Some(value.as_bytes()),
             MaterialPropertyValue::Vec4(value) => Some(value.as_bytes()),
+            MaterialPropertyValue::U32(value) => Some(value.as_bytes()),
             MaterialPropertyValue::Texture(_) => None,
             MaterialPropertyValue::Sampler(_) => None,
         }

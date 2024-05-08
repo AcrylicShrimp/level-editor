@@ -15,16 +15,16 @@ mod primitives;
 
 use cursor::Cursor;
 use parse::Parse;
-pub use pmx_bone::PmxBone;
-pub use pmx_display::PmxDisplay;
-pub use pmx_header::PmxHeader;
-pub use pmx_indices::PmxIndices;
-pub use pmx_joint::PmxJoint;
-pub use pmx_material::PmxMaterial;
-pub use pmx_morph::PmxMorph;
-pub use pmx_rigidbody::PmxRigidbody;
-pub use pmx_texture::PmxTexture;
-pub use pmx_vertex::PmxVertex;
+pub use pmx_bone::*;
+pub use pmx_display::*;
+pub use pmx_header::*;
+pub use pmx_indices::*;
+pub use pmx_joint::*;
+pub use pmx_material::*;
+pub use pmx_morph::*;
+pub use pmx_rigidbody::*;
+pub use pmx_texture::*;
+pub use pmx_vertex::*;
 use std::fmt::Display;
 use thiserror::Error;
 

@@ -99,4 +99,5 @@ pub enum MaterialPropertyValueUniformKind {
     Vec2(Vec2),
     Vec3(Vec3),
     Vec4(Vec4),
+    U32(u32),
 }

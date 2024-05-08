@@ -1,8 +1,10 @@
 mod model_processor;
+mod pmx_model_processor;
 mod shader_processor;
 mod texture_processor;
 
 pub use model_processor::*;
+pub use pmx_model_processor::*;
 pub use shader_processor::*;
 pub use texture_processor::*;
 

@@ -119,6 +119,7 @@ pub enum PmxVertexDeformKind {
         bone_weight_3: f32,
         bone_weight_4: f32,
     },
+    /// Spherical deform blending
     Sdef {
         bone_index_1: PmxBoneIndex,
         bone_index_2: PmxBoneIndex,
@@ -126,6 +127,17 @@ pub enum PmxVertexDeformKind {
         c: PmxVec3,
         r0: PmxVec3,
         r1: PmxVec3,
+    },
+    /// Dual quaternion deform blending
+    Qdef {
+        bone_index_1: PmxBoneIndex,
+        bone_index_2: PmxBoneIndex,
+        bone_index_3: PmxBoneIndex,
+        bone_index_4: PmxBoneIndex,
+        bone_weight_1: f32,
+        bone_weight_2: f32,
+        bone_weight_3: f32,
+        bone_weight_4: f32,
     },
 }
 
@@ -214,6 +226,32 @@ impl Parse for PmxVertexDeformKind {
                     c,
                     r0,
                     r1,
+                }
+            }
+            4 => {
+                // bone index (N bytes) * 4
+                // bone weight (4 bytes) * 4
+                let size = config.bone_index_size.size() * 4 + 4 * 4;
+                cursor.ensure_bytes::<Self::Error>(size)?;
+
+                let bone_index_1 = PmxBoneIndex::parse(config, cursor)?;
+                let bone_index_2 = PmxBoneIndex::parse(config, cursor)?;
+                let bone_index_3 = PmxBoneIndex::parse(config, cursor)?;
+                let bone_index_4 = PmxBoneIndex::parse(config, cursor)?;
+                let bone_weight_1 = f32::parse(config, cursor)?;
+                let bone_weight_2 = f32::parse(config, cursor)?;
+                let bone_weight_3 = f32::parse(config, cursor)?;
+                let bone_weight_4 = f32::parse(config, cursor)?;
+
+                PmxVertexDeformKind::Qdef {
+                    bone_index_1,
+                    bone_index_2,
+                    bone_index_3,
+                    bone_index_4,
+                    bone_weight_1,
+                    bone_weight_2,
+                    bone_weight_3,
+                    bone_weight_4,
                 }
             }
             kind => return Err(PmxVertexParseError::InvalidDeformKind { kind }),
