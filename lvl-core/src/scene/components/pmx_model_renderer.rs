@@ -76,7 +76,8 @@ impl PmxModelRenderer {
         element: &PmxModelElement,
         device: &Device,
     ) -> RenderPipeline {
-        let shader = element.material.shader();
+        let material = &element.material;
+        let shader = material.shader();
         let shader_locations = &shader.reflection().locations;
         let vertex_layout = self.model.vertex_layout();
         let mut attributes = Vec::with_capacity(vertex_layout.elements.len());
@@ -101,7 +102,7 @@ impl PmxModelRenderer {
 
         device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("pmx-model-element-render-pipeline"),
-            layout: Some(element.material.shader().pipeline_layout()),
+            layout: Some(shader.pipeline_layout()),
             vertex: VertexState {
                 module: shader.module(),
                 entry_point: &shader.reflection().vertex_entry_point,
@@ -121,16 +122,16 @@ impl PmxModelRenderer {
                 ],
             },
             primitive: PrimitiveState {
-                topology: if element.material.render_state().point_drawing {
+                topology: if material.render_state().point_drawing {
                     PrimitiveTopology::PointList
-                } else if element.material.render_state().line_drawing {
+                } else if material.render_state().line_drawing {
                     PrimitiveTopology::LineList
                 } else {
                     PrimitiveTopology::TriangleList
                 },
                 strip_index_format: None,
                 front_face: FrontFace::Ccw,
-                cull_mode: if element.material.render_state().no_cull_back_face {
+                cull_mode: if material.render_state().no_cull_back_face {
                     None
                 } else {
                     Some(Face::Back)
@@ -159,7 +160,7 @@ impl PmxModelRenderer {
                 targets: &[Some(ColorTargetState {
                     // TODO: let engine decide actual color target state
                     format: TextureFormat::Bgra8UnormSrgb,
-                    blend: match element.material.render_state().render_type {
+                    blend: match material.render_state().render_type {
                         MaterialRenderType::Opaque => None,
                         MaterialRenderType::Transparent => Some(BlendState::ALPHA_BLENDING),
                     },

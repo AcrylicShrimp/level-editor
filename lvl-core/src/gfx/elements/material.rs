@@ -241,6 +241,12 @@ impl Material {
         &self.render_state
     }
 
+    pub fn get_property(&self, name: &str) -> Option<&MaterialProperty> {
+        self.property_name_index_map
+            .get(name)
+            .map(|index| &self.properties[*index])
+    }
+
     pub fn set_property(&mut self, name: &str, value: MaterialPropertyValue) -> bool {
         let index = if let Some(index) = self.property_name_index_map.get(name) {
             *index

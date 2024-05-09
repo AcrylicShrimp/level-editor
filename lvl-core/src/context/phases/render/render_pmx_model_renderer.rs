@@ -36,7 +36,8 @@ pub fn build_render_command_pmx_model_renderer<'r>(
     let mut commands = Vec::with_capacity(model.elements().len());
 
     for (index, element) in model.elements().iter().enumerate() {
-        let bind_groups = match element.material.construct_bind_groups(gfx_ctx) {
+        let material = &element.material;
+        let bind_groups = match material.construct_bind_groups(gfx_ctx) {
             Some(bind_groups) => bind_groups,
             None => {
                 continue;
@@ -44,11 +45,7 @@ pub fn build_render_command_pmx_model_renderer<'r>(
         };
 
         commands.push(RenderCommand::new(
-            element
-                .material
-                .shader()
-                .reflection()
-                .builtin_uniform_bind_group,
+            material.shader().reflection().builtin_uniform_bind_group,
             render_pipelines[index].clone(),
             bind_groups,
             instance_buffer.clone(),

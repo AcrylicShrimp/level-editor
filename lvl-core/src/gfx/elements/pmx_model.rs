@@ -1,8 +1,11 @@
 use super::{Material, MaterialPropertyValue, Shader, Texture};
 use crate::gfx::GfxContext;
+use lvl_math::{Vec3, Vec4};
 use lvl_resource::{
-    PmxModelIndexKind, PmxModelMorphKind, PmxModelSource, PmxModelVertexLayoutElement,
-    PmxModelVertexLayoutElementKind, ResourceFile, ShaderSource, TextureKind, TextureSource,
+    MaterialPropertyValueUniformKind, MaterialSource, PmxModelIndexKind, PmxModelMorphKind,
+    PmxModelMorphMaterialElement, PmxModelMorphMaterialOffsetMode, PmxModelSource,
+    PmxModelVertexLayoutElement, PmxModelVertexLayoutElementKind, ResourceFile, ShaderSource,
+    TextureKind, TextureSource,
 };
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -26,7 +29,9 @@ pub struct PmxModel {
     elements: Vec<PmxModelElement>,
     vertex_layout: PmxModelVertexLayout,
     index_kind: PmxModelIndexKind,
-    morphs: HashMap<String, PmxModelMorph>,
+    material_morph_targets: Vec<Option<PmxMaterialMorphTarget>>,
+    morph_name_map: HashMap<String, u32>,
+    morphs: Vec<PmxModelMorph>,
     morph_coefficients: Vec<f32>,
     morph_coefficients_buffer: Arc<Buffer>,
     is_morph_dirty: AtomicBool,
@@ -104,19 +109,94 @@ impl PmxModel {
         });
         let morph_coefficients_buffer = Arc::new(morph_coefficients_buffer);
 
+        let mut material_morph_targets = Vec::with_capacity(source.elements().len());
         let mut elements = Vec::with_capacity(source.elements().len());
 
         for pmx_element in source.elements() {
             if pmx_element.index_range.1 <= pmx_element.index_range.0 {
+                material_morph_targets.push(None);
                 continue;
             }
 
-            let material_source = match resource.find(&pmx_element.material_name) {
+            let material_source = match resource.find::<MaterialSource>(&pmx_element.material_name)
+            {
                 Some(source) => source,
                 None => {
+                    material_morph_targets.push(None);
                     continue;
                 }
             };
+
+            material_morph_targets.push(Some(PmxMaterialMorphTarget {
+                element_index: elements.len() as u32,
+                diffuse_color: material_source
+                    .properties()
+                    .get("diffuse_color")
+                    .and_then(|property| match &property.value {
+                        lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
+                            MaterialPropertyValueUniformKind::Vec4(value) => Some(*value),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .unwrap_or_default(),
+                specular_color: material_source
+                    .properties()
+                    .get("specular_color")
+                    .and_then(|property| match &property.value {
+                        lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
+                            MaterialPropertyValueUniformKind::Vec3(value) => Some(*value),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .unwrap_or_default(),
+                specular_strength: material_source
+                    .properties()
+                    .get("specular_strength")
+                    .and_then(|property| match &property.value {
+                        lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
+                            MaterialPropertyValueUniformKind::Float(value) => Some(*value),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .unwrap_or_default(),
+                ambient_color: material_source
+                    .properties()
+                    .get("ambient_color")
+                    .and_then(|property| match &property.value {
+                        lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
+                            MaterialPropertyValueUniformKind::Vec3(value) => Some(*value),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .unwrap_or_default(),
+                edge_color: material_source
+                    .properties()
+                    .get("edge_color")
+                    .and_then(|property| match &property.value {
+                        lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
+                            MaterialPropertyValueUniformKind::Vec4(value) => Some(*value),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .unwrap_or_default(),
+                edge_size: material_source
+                    .properties()
+                    .get("edge_size")
+                    .and_then(|property| match &property.value {
+                        lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
+                            MaterialPropertyValueUniformKind::Float(value) => Some(*value),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .unwrap_or_default(),
+            }));
+
             let mut material = Material::load_from_source(
                 &mut shader_loader,
                 &mut texture_loader,
@@ -135,21 +215,20 @@ impl PmxModel {
             );
 
             elements.push(PmxModelElement {
-                material,
+                material: material,
                 index_range: pmx_element.index_range,
             });
         }
 
-        let mut morphs = HashMap::with_capacity(source.morphs().len());
+        let mut morph_name_map = HashMap::with_capacity(source.morphs().len());
+        let mut morphs = Vec::with_capacity(source.morphs().len());
 
         for (index, morph) in source.morphs().iter().enumerate() {
-            morphs.insert(
-                morph.name.clone(),
-                PmxModelMorph {
-                    morph_index: index as u32,
-                    kind: morph.kind.clone(),
-                },
-            );
+            morph_name_map.insert(morph.name.clone(), morphs.len() as u32);
+            morphs.push(PmxModelMorph {
+                morph_index: index as u32,
+                kind: morph.kind.clone(),
+            });
         }
 
         Self {
@@ -158,6 +237,8 @@ impl PmxModel {
             elements,
             vertex_layout: PmxModelVertexLayout::new(Vec::from(source.vertex_layout())),
             index_kind: source.index_kind(),
+            material_morph_targets,
+            morph_name_map,
             morphs,
             morph_coefficients,
             morph_coefficients_buffer,
@@ -189,7 +270,11 @@ impl PmxModel {
         self.index_kind
     }
 
-    pub fn morphs(&self) -> &HashMap<String, PmxModelMorph> {
+    pub fn morph_name_map(&self) -> &HashMap<String, u32> {
+        &self.morph_name_map
+    }
+
+    pub fn morphs(&self) -> &[PmxModelMorph] {
         &self.morphs
     }
 
@@ -198,15 +283,92 @@ impl PmxModel {
     }
 
     pub fn set_morph(&mut self, name: &str, value: f32) {
-        let morph_index = match self.morphs.get(name) {
-            Some(morph) => morph.morph_index,
+        let morph_index = match self.morph_name_map.get(name) {
+            Some(index) => *index as usize,
             None => {
                 return;
             }
         };
 
-        self.morph_coefficients[morph_index as usize] = value;
+        self.morph_coefficients[morph_index] = value;
         self.is_morph_dirty.store(true, Ordering::SeqCst);
+
+        match &self.morphs[morph_index].kind {
+            PmxModelMorphKind::Group(elements) => {
+                for element in elements {
+                    self.morph_coefficients[element.morph_index as usize] =
+                        value * element.coefficient;
+
+                    match &self.morphs[element.morph_index as usize].kind {
+                        PmxModelMorphKind::Material(elements) => {
+                            for element in elements {
+                                match element.material_index {
+                                    Some(index) => {
+                                        let target =
+                                            match &self.material_morph_targets[index as usize] {
+                                                Some(target) => target,
+                                                None => {
+                                                    continue;
+                                                }
+                                            };
+                                        let material = &mut self.elements
+                                            [target.element_index as usize]
+                                            .material;
+                                        apply_material_morph(value, material, target, &element);
+                                    }
+                                    None => {
+                                        for target in &self.material_morph_targets {
+                                            let target = match target {
+                                                Some(target) => target,
+                                                None => {
+                                                    continue;
+                                                }
+                                            };
+                                            let material = &mut self.elements
+                                                [target.element_index as usize]
+                                                .material;
+                                            apply_material_morph(value, material, target, &element);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            PmxModelMorphKind::Material(elements) => {
+                for element in elements {
+                    match element.material_index {
+                        Some(index) => {
+                            let target = match &self.material_morph_targets[index as usize] {
+                                Some(target) => target,
+                                None => {
+                                    continue;
+                                }
+                            };
+                            let material =
+                                &mut self.elements[target.element_index as usize].material;
+                            apply_material_morph(value, material, target, &element);
+                        }
+                        None => {
+                            for target in &self.material_morph_targets {
+                                let target = match target {
+                                    Some(target) => target,
+                                    None => {
+                                        continue;
+                                    }
+                                };
+                                let material =
+                                    &mut self.elements[target.element_index as usize].material;
+                                apply_material_morph(value, material, target, &element);
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 
     pub(crate) fn update_morph_coefficients(&self, queue: &Queue) {
@@ -270,4 +432,125 @@ impl PmxModelVertexLayout {
 pub struct PmxModelMorph {
     pub morph_index: u32,
     pub kind: PmxModelMorphKind,
+}
+
+#[derive(Debug)]
+pub struct PmxMaterialMorphTarget {
+    pub element_index: u32,
+    pub diffuse_color: Vec4,
+    pub specular_color: Vec3,
+    pub specular_strength: f32,
+    pub ambient_color: Vec3,
+    pub edge_color: Vec4,
+    pub edge_size: f32,
+}
+
+fn apply_material_morph(
+    coefficient: f32,
+    material: &mut Material,
+    target: &PmxMaterialMorphTarget,
+    element: &PmxModelMorphMaterialElement,
+) {
+    material.set_property(
+        "diffuse_color",
+        MaterialPropertyValue::Vec4(match element.offset_mode {
+            PmxModelMorphMaterialOffsetMode::Multiply => {
+                target.diffuse_color * coefficient * element.diffuse_color
+            }
+            PmxModelMorphMaterialOffsetMode::Additive => {
+                target.diffuse_color + coefficient * element.diffuse_color
+            }
+        }),
+    );
+    material.set_property(
+        "specular_color",
+        MaterialPropertyValue::Vec3(match element.offset_mode {
+            PmxModelMorphMaterialOffsetMode::Multiply => {
+                target.specular_color * coefficient * element.specular_color
+            }
+            PmxModelMorphMaterialOffsetMode::Additive => {
+                target.specular_color + coefficient * element.specular_color
+            }
+        }),
+    );
+    material.set_property(
+        "specular_color",
+        MaterialPropertyValue::Vec3(match element.offset_mode {
+            PmxModelMorphMaterialOffsetMode::Multiply => {
+                target.specular_color * coefficient * element.specular_color
+            }
+            PmxModelMorphMaterialOffsetMode::Additive => {
+                target.specular_color + coefficient * element.specular_color
+            }
+        }),
+    );
+    material.set_property(
+        "specular_strength",
+        MaterialPropertyValue::Float(match element.offset_mode {
+            PmxModelMorphMaterialOffsetMode::Multiply => {
+                target.specular_strength * coefficient * element.specular_strength
+            }
+            PmxModelMorphMaterialOffsetMode::Additive => {
+                target.specular_strength + coefficient * element.specular_strength
+            }
+        }),
+    );
+    material.set_property(
+        "ambient_color",
+        MaterialPropertyValue::Vec3(match element.offset_mode {
+            PmxModelMorphMaterialOffsetMode::Multiply => {
+                target.ambient_color * coefficient * element.ambient_color
+            }
+            PmxModelMorphMaterialOffsetMode::Additive => {
+                target.ambient_color + coefficient * element.ambient_color
+            }
+        }),
+    );
+    material.set_property(
+        "edge_color",
+        MaterialPropertyValue::Vec4(match element.offset_mode {
+            PmxModelMorphMaterialOffsetMode::Multiply => {
+                target.edge_color * coefficient * element.edge_color
+            }
+            PmxModelMorphMaterialOffsetMode::Additive => {
+                target.edge_color + coefficient * element.edge_color
+            }
+        }),
+    );
+    material.set_property(
+        "edge_size",
+        MaterialPropertyValue::Float(match element.offset_mode {
+            PmxModelMorphMaterialOffsetMode::Multiply => {
+                target.edge_size * coefficient * element.edge_size
+            }
+            PmxModelMorphMaterialOffsetMode::Additive => {
+                target.edge_size + coefficient * element.edge_size
+            }
+        }),
+    );
+    material.set_property(
+        "texture_tint_color",
+        MaterialPropertyValue::Vec4(match element.offset_mode {
+            PmxModelMorphMaterialOffsetMode::Multiply => coefficient * element.texture_tint_color,
+            PmxModelMorphMaterialOffsetMode::Additive => coefficient * element.texture_tint_color,
+        }),
+    );
+    material.set_property(
+        "environment_tint_color",
+        MaterialPropertyValue::Vec4(match element.offset_mode {
+            PmxModelMorphMaterialOffsetMode::Multiply => {
+                coefficient * element.environment_tint_color
+            }
+            PmxModelMorphMaterialOffsetMode::Additive => {
+                coefficient * element.environment_tint_color
+            }
+        }),
+    );
+    material.set_property(
+        "toon_tint_color",
+        MaterialPropertyValue::Vec4(match element.offset_mode {
+            PmxModelMorphMaterialOffsetMode::Multiply => coefficient * element.toon_tint_color,
+            PmxModelMorphMaterialOffsetMode::Additive => coefficient * element.toon_tint_color,
+        }),
+    );
 }
