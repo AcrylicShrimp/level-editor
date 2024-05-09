@@ -1,9 +1,9 @@
-use super::{Shader, Texture};
+use super::Shader;
 use crate::gfx::GfxContext;
 use lvl_math::{Vec2, Vec3, Vec4};
 use lvl_resource::{
-    MaterialPropertyValueUniformKind, MaterialRenderState, MaterialSource, ResourceFile,
-    ShaderBindingKind, ShaderSource, TextureKind, TextureSource,
+    MaterialPropertyValueUniformKind, MaterialRenderState, MaterialSource, ShaderBindingKind,
+    ShaderSource,
 };
 use std::{
     cell::{RefCell, RefMut},
@@ -19,7 +19,7 @@ use zerocopy::AsBytes;
 
 #[derive(Debug)]
 pub struct Material {
-    shader: Shader,
+    shader: Arc<Shader>,
     render_state: MaterialRenderState,
     uniform_buffers: Vec<Buffer>,
     uniform_structs: Vec<UniformStruct>,
@@ -29,13 +29,13 @@ pub struct Material {
 }
 
 impl Material {
-    pub fn load_from_source(
-        resource: &ResourceFile,
+    pub fn load_from_source<'a>(
+        mut shader_loader: impl FnMut(&str) -> Option<(Arc<Shader>, &'a ShaderSource)>,
+        mut texture_loader: impl FnMut(&str) -> Option<Arc<TextureView>>,
         source: &MaterialSource,
         gfx_ctx: &GfxContext,
     ) -> Self {
-        let shader_source = resource.find::<ShaderSource>(source.shader_name()).unwrap();
-        let shader = Shader::load_from_source(shader_source, gfx_ctx);
+        let (shader, shader_source) = shader_loader(source.shader_name()).unwrap();
 
         let mut uniform_buffers = Vec::new();
 
@@ -104,19 +104,8 @@ impl Material {
             let mut value = match source.properties().get(&binding.name) {
                 Some(property) => match &property.value {
                     lvl_resource::MaterialPropertyValue::Texture { texture_name } => {
-                        // TODO: do not load texture on-the-fly here; take textures from cached context instead
-                        match resource.find::<TextureSource>(texture_name) {
-                            Some(source) => match source.kind() {
-                                TextureKind::Single(element) => {
-                                    let texture = Texture::load_from_source(element, gfx_ctx);
-                                    let texture_view =
-                                        texture.handle().create_view(&Default::default());
-                                    Some(MaterialPropertyValue::Texture(Arc::new(texture_view)))
-                                }
-                                TextureKind::Cubemap { .. } => todo!(),
-                            },
-                            _ => None,
-                        }
+                        texture_loader(texture_name)
+                            .map(|texture_view| MaterialPropertyValue::Texture(texture_view))
                     }
                     lvl_resource::MaterialPropertyValue::Sampler {
                         address_mode_u,

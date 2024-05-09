@@ -1,14 +1,18 @@
-use std::mem::size_of;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    mem::size_of,
+    sync::Arc,
+};
 
-use super::Material;
+use super::{Material, Shader, Texture};
 use crate::gfx::GfxContext;
 use lvl_resource::{
     PmxModelIndexKind, PmxModelSource, PmxModelVertexLayoutElement,
-    PmxModelVertexLayoutElementKind, ResourceFile,
+    PmxModelVertexLayoutElementKind, ResourceFile, ShaderSource, TextureKind, TextureSource,
 };
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
-    Buffer, BufferUsages,
+    Buffer, BufferUsages, TextureView,
 };
 
 #[derive(Debug)]
@@ -21,8 +25,8 @@ pub struct PmxModel {
 }
 
 impl PmxModel {
-    pub fn load_from_source(
-        resource: &ResourceFile,
+    pub fn load_from_source<'a>(
+        resource: &'a ResourceFile,
         source: &PmxModelSource,
         gfx_ctx: &GfxContext,
     ) -> Self {
@@ -37,6 +41,51 @@ impl PmxModel {
             usage: BufferUsages::INDEX,
         });
 
+        let mut shader_cache = HashMap::<String, (Arc<Shader>, &'a ShaderSource)>::new();
+        let mut shader_loader = |name: &str| -> Option<(Arc<Shader>, &'a ShaderSource)> {
+            match shader_cache.entry(name.to_owned()) {
+                Entry::Occupied(entry) => Some(entry.get().clone()),
+                Entry::Vacant(entry) => {
+                    let shader_source = match resource.find::<ShaderSource>(name) {
+                        Some(source) => source,
+                        None => {
+                            return None;
+                        }
+                    };
+
+                    let shader = Arc::new(Shader::load_from_source(shader_source, gfx_ctx));
+                    entry.insert((shader.clone(), shader_source));
+                    Some((shader, shader_source))
+                }
+            }
+        };
+
+        let mut texture_cache = HashMap::<String, Arc<TextureView>>::new();
+        let mut texture_loader = |name: &str| -> Option<Arc<TextureView>> {
+            match texture_cache.entry(name.to_owned()) {
+                Entry::Occupied(entry) => Some(entry.get().clone()),
+                Entry::Vacant(entry) => {
+                    let texture_source = match resource.find::<TextureSource>(name) {
+                        Some(source) => source,
+                        None => {
+                            return None;
+                        }
+                    };
+
+                    match texture_source.kind() {
+                        TextureKind::Single(element) => {
+                            let texture = Texture::load_from_source(element, gfx_ctx);
+                            let texture_view =
+                                Arc::new(texture.handle().create_view(&Default::default()));
+                            entry.insert(texture_view.clone());
+                            Some(texture_view)
+                        }
+                        TextureKind::Cubemap { .. } => None,
+                    }
+                }
+            }
+        };
+
         let mut elements = Vec::with_capacity(source.elements().len());
 
         for pmx_element in source.elements() {
@@ -50,7 +99,12 @@ impl PmxModel {
                     continue;
                 }
             };
-            let material = Material::load_from_source(resource, material_source, gfx_ctx);
+            let material = Material::load_from_source(
+                &mut shader_loader,
+                &mut texture_loader,
+                material_source,
+                gfx_ctx,
+            );
 
             elements.push(PmxModelElement {
                 material,

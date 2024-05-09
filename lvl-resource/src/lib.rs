@@ -44,7 +44,7 @@ impl ResourceFile {
         &self.resources
     }
 
-    pub fn find<T>(&self, name: &str) -> Option<&T>
+    pub fn find<'a, T>(&'a self, name: &str) -> Option<&'a T>
     where
         T: FromResourceKind,
     {
