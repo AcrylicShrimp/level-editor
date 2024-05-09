@@ -88,6 +88,11 @@ pub enum ShaderBindingKind {
         size: NonZeroU64,
         is_struct: bool,
     },
+    StorageBuffer {
+        read: bool,
+        write: bool,
+        size: NonZeroU64,
+    },
     Texture {
         sample_type: TextureSampleType,
         view_dimension: TextureViewDimension,

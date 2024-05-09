@@ -92,6 +92,9 @@ impl Material {
                     binding: binding.binding,
                     buffer_index: index,
                 },
+                ShaderBindingKind::StorageBuffer { size, .. } => {
+                    MaterialPropertyKind::StorageBuffer { size }
+                }
                 ShaderBindingKind::Texture { .. } => MaterialPropertyKind::Texture,
                 ShaderBindingKind::Sampler { .. } => MaterialPropertyKind::Sampler,
                 _ => {
@@ -352,6 +355,23 @@ impl Material {
                             });
                         }
                     }
+                    MaterialPropertyKind::StorageBuffer { .. } => {
+                        if let MaterialPropertyValue::StorageBuffer {
+                            buffer: source_buffer,
+                            offset,
+                            size,
+                        } = value
+                        {
+                            entries.push(BindGroupEntry {
+                                binding: property.binding as u32,
+                                resource: BindingResource::Buffer(BufferBinding {
+                                    buffer: source_buffer,
+                                    offset: *offset,
+                                    size: Some(*size),
+                                }),
+                            });
+                        }
+                    }
                     MaterialPropertyKind::Texture => {
                         if let MaterialPropertyValue::Texture(value) = value {
                             entries.push(BindGroupEntry {
@@ -455,6 +475,9 @@ pub enum MaterialPropertyKind {
         size: NonZeroU64,
         buffer_index: u32,
     },
+    StorageBuffer {
+        size: NonZeroU64,
+    },
     Texture,
     Sampler,
 }
@@ -471,6 +494,12 @@ impl MaterialPropertyKind {
                         | MaterialPropertyValue::Vec4(_)
                 )
             }
+            Self::StorageBuffer { size, .. } => match value {
+                MaterialPropertyValue::StorageBuffer {
+                    size: source_size, ..
+                } if size.get() == source_size.get() => true,
+                _ => false,
+            },
             Self::Texture => {
                 matches!(value, MaterialPropertyValue::Texture(_))
             }
@@ -488,6 +517,7 @@ impl MaterialPropertyKind {
             MaterialPropertyKind::UniformMember { .. } => {
                 Some(MaterialPropertyValue::Vec4(Vec4::ZERO))
             }
+            MaterialPropertyKind::StorageBuffer { .. } => None,
             MaterialPropertyKind::Texture => None,
             MaterialPropertyKind::Sampler => None,
         }
@@ -502,6 +532,13 @@ pub enum MaterialPropertyValue {
     Vec3(Vec3),
     Vec4(Vec4),
     U32(u32),
+
+    // storage buffer values
+    StorageBuffer {
+        buffer: Arc<Buffer>,
+        offset: u64,
+        size: NonZeroU64,
+    },
 
     // texture values
     Texture(Arc<TextureView>),
@@ -518,6 +555,7 @@ impl MaterialPropertyValue {
             MaterialPropertyValue::Vec3(value) => Some(value.as_bytes()),
             MaterialPropertyValue::Vec4(value) => Some(value.as_bytes()),
             MaterialPropertyValue::U32(value) => Some(value.as_bytes()),
+            MaterialPropertyValue::StorageBuffer { .. } => None,
             MaterialPropertyValue::Texture(_) => None,
             MaterialPropertyValue::Sampler(_) => None,
         }

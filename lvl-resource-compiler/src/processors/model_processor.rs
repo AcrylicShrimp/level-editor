@@ -247,6 +247,7 @@ mod pmx {
         ShaderProcessor::generate_shader_resource_from_wsgl_content(
             shader_display_name,
             shader_content.to_owned(),
+            &BTreeSet::new(),
         )
     }
 
@@ -257,6 +258,7 @@ mod pmx {
         ShaderProcessor::generate_shader_resource_from_wsgl_content(
             shader_display_name,
             shader_content.to_owned(),
+            &BTreeSet::new(),
         )
     }
 

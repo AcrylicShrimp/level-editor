@@ -1,19 +1,23 @@
+use super::{Material, MaterialPropertyValue, Shader, Texture};
+use crate::gfx::GfxContext;
+use lvl_resource::{
+    PmxModelIndexKind, PmxModelMorphKind, PmxModelSource, PmxModelVertexLayoutElement,
+    PmxModelVertexLayoutElementKind, ResourceFile, ShaderSource, TextureKind, TextureSource,
+};
 use std::{
     collections::{hash_map::Entry, HashMap},
     mem::size_of,
-    sync::Arc,
-};
-
-use super::{Material, Shader, Texture};
-use crate::gfx::GfxContext;
-use lvl_resource::{
-    PmxModelIndexKind, PmxModelSource, PmxModelVertexLayoutElement,
-    PmxModelVertexLayoutElementKind, ResourceFile, ShaderSource, TextureKind, TextureSource,
+    num::NonZeroU64,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
-    Buffer, BufferUsages, TextureView,
+    Buffer, BufferUsages, Queue, TextureView,
 };
+use zerocopy::AsBytes;
 
 #[derive(Debug)]
 pub struct PmxModel {
@@ -22,6 +26,10 @@ pub struct PmxModel {
     elements: Vec<PmxModelElement>,
     vertex_layout: PmxModelVertexLayout,
     index_kind: PmxModelIndexKind,
+    morphs: HashMap<String, PmxModelMorph>,
+    morph_coefficients: Vec<f32>,
+    morph_coefficients_buffer: Arc<Buffer>,
+    is_morph_dirty: AtomicBool,
 }
 
 impl PmxModel {
@@ -86,6 +94,16 @@ impl PmxModel {
             }
         };
 
+        // TODO: check if the morph count is less than 128
+        // TODO: make engine decide the maximum morph count, not hardcoded
+        let morph_coefficients = vec![0f32; 128];
+        let morph_coefficients_buffer = gfx_ctx.device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: morph_coefficients.as_bytes(),
+            usage: BufferUsages::COPY_DST | BufferUsages::STORAGE,
+        });
+        let morph_coefficients_buffer = Arc::new(morph_coefficients_buffer);
+
         let mut elements = Vec::with_capacity(source.elements().len());
 
         for pmx_element in source.elements() {
@@ -99,11 +117,21 @@ impl PmxModel {
                     continue;
                 }
             };
-            let material = Material::load_from_source(
+            let mut material = Material::load_from_source(
                 &mut shader_loader,
                 &mut texture_loader,
                 material_source,
                 gfx_ctx,
+            );
+
+            // TODO: can we make the property name configurable?
+            material.set_property(
+                "morph_coefficients",
+                MaterialPropertyValue::StorageBuffer {
+                    buffer: morph_coefficients_buffer.clone(),
+                    offset: 0,
+                    size: NonZeroU64::new((size_of::<[f32; 128]>()) as u64).unwrap(),
+                },
             );
 
             elements.push(PmxModelElement {
@@ -112,12 +140,28 @@ impl PmxModel {
             });
         }
 
+        let mut morphs = HashMap::with_capacity(source.morphs().len());
+
+        for (index, morph) in source.morphs().iter().enumerate() {
+            morphs.insert(
+                morph.name.clone(),
+                PmxModelMorph {
+                    morph_index: index as u32,
+                    kind: morph.kind.clone(),
+                },
+            );
+        }
+
         Self {
             vertex_buffer,
             index_buffer,
             elements,
             vertex_layout: PmxModelVertexLayout::new(Vec::from(source.vertex_layout())),
             index_kind: source.index_kind(),
+            morphs,
+            morph_coefficients,
+            morph_coefficients_buffer,
+            is_morph_dirty: AtomicBool::new(false),
         }
     }
 
@@ -143,6 +187,38 @@ impl PmxModel {
 
     pub fn index_kind(&self) -> PmxModelIndexKind {
         self.index_kind
+    }
+
+    pub fn morphs(&self) -> &HashMap<String, PmxModelMorph> {
+        &self.morphs
+    }
+
+    pub fn morph_coefficients(&self) -> &[f32] {
+        &self.morph_coefficients
+    }
+
+    pub fn set_morph(&mut self, name: &str, value: f32) {
+        let morph_index = match self.morphs.get(name) {
+            Some(morph) => morph.morph_index,
+            None => {
+                return;
+            }
+        };
+
+        self.morph_coefficients[morph_index as usize] = value;
+        self.is_morph_dirty.store(true, Ordering::SeqCst);
+    }
+
+    pub(crate) fn update_morph_coefficients(&self, queue: &Queue) {
+        if self.is_morph_dirty.load(Ordering::SeqCst) {
+            queue.write_buffer(
+                &self.morph_coefficients_buffer,
+                0,
+                self.morph_coefficients.as_bytes(),
+            );
+
+            self.is_morph_dirty.store(false, Ordering::SeqCst);
+        }
     }
 }
 
@@ -176,6 +252,10 @@ impl PmxModelVertexLayout {
                     PmxModelVertexLayoutElementKind::SdefR0 => size_of::<[f32; 3]>(),
                     PmxModelVertexLayoutElementKind::SdefR1 => size_of::<[f32; 3]>(),
                     PmxModelVertexLayoutElementKind::EdgeSize => size_of::<f32>(),
+                    PmxModelVertexLayoutElementKind::VertexMorphIndexStart => size_of::<u32>(),
+                    PmxModelVertexLayoutElementKind::UvMorphIndexStart => size_of::<u32>(),
+                    PmxModelVertexLayoutElementKind::VertexMorphCount => size_of::<u32>(),
+                    PmxModelVertexLayoutElementKind::UvMorphCount => size_of::<u32>(),
                 };
                 element.offset + size as u64
             })
@@ -184,4 +264,10 @@ impl PmxModelVertexLayout {
 
         Self { elements, stride }
     }
+}
+
+#[derive(Debug)]
+pub struct PmxModelMorph {
+    pub morph_index: u32,
+    pub kind: PmxModelMorphKind,
 }

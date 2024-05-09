@@ -21,6 +21,8 @@ pub fn build_render_command_pmx_model_renderer<'r>(
     );
 
     let model = renderer.model();
+    model.update_morph_coefficients(&gfx_ctx.queue);
+
     let render_pipelines = renderer.construct_render_pipelines(
         instance_data_provider.instance_data_size(),
         instance_data_provider.instance_data_attributes(),

@@ -120,6 +120,12 @@ pub enum PmxMorphOffset {
     Uv {
         offsets: Vec<PmxMorphOffsetUv>,
         /// extra UV index [0, 4]
+        ///
+        /// - 0 for uv
+        /// - 1 for additional 1
+        /// - 2 for additional 2
+        /// - 3 for additional 3
+        /// - 4 for additional 4
         uv_index: u8,
     },
     Material(Vec<PmxMorphOffsetMaterial>),
@@ -289,6 +295,7 @@ impl Parse for PmxMorphOffsetUv {
 pub struct PmxMorphOffsetMaterial {
     /// -1 for all materials
     pub index: PmxMaterialIndex,
+    pub offset_mode: PmxMorphOffsetMaterialOffsetMode,
     pub diffuse_color: PmxVec4,
     pub specular_color: PmxVec3,
     pub specular_strength: f32,
@@ -312,7 +319,7 @@ impl Parse for PmxMorphOffsetMaterial {
     fn parse(config: &PmxConfig, cursor: &mut Cursor) -> Result<Self, Self::Error> {
         // since material morph offset has a fixed size, we don't need to check the size here
         let index = PmxMaterialIndex::parse(config, cursor)?;
-        let _unused = u8::parse(config, cursor)?;
+        let texture_mode = u8::parse(config, cursor)?;
         let diffuse_color = PmxVec4::parse(config, cursor)?;
         let specular_color = PmxVec3::parse(config, cursor)?;
         let specular_strength = f32::parse(config, cursor)?;
@@ -325,6 +332,11 @@ impl Parse for PmxMorphOffsetMaterial {
 
         Ok(Self {
             index,
+            offset_mode: if texture_mode == 0 {
+                PmxMorphOffsetMaterialOffsetMode::Multiply
+            } else {
+                PmxMorphOffsetMaterialOffsetMode::Additive
+            },
             diffuse_color,
             specular_color,
             specular_strength,
@@ -336,6 +348,12 @@ impl Parse for PmxMorphOffsetMaterial {
             toon_tint_color,
         })
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PmxMorphOffsetMaterialOffsetMode {
+    Multiply,
+    Additive,
 }
 
 #[derive(Debug, Clone)]

@@ -25,6 +25,9 @@ impl Texture {
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: match source.texture_format {
+                TextureElementTextureFormat::RG32Uint => TextureFormat::Rg32Uint,
+                TextureElementTextureFormat::RGBA32Uint => TextureFormat::Rgba32Uint,
+                TextureElementTextureFormat::RGBA32Float => TextureFormat::Rgba32Float,
                 TextureElementTextureFormat::RGBA8Unorm => TextureFormat::Rgba8Unorm,
             },
             usage: TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
@@ -42,6 +45,9 @@ impl Texture {
             ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some(match source.texture_format {
+                    TextureElementTextureFormat::RG32Uint => 8 * source.size.width as u32,
+                    TextureElementTextureFormat::RGBA32Uint => 16 * source.size.width as u32,
+                    TextureElementTextureFormat::RGBA32Float => 16 * source.size.width as u32,
                     TextureElementTextureFormat::RGBA8Unorm => 4 * source.size.width as u32,
                 }),
                 rows_per_image: None,

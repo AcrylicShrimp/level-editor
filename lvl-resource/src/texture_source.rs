@@ -56,6 +56,9 @@ pub struct TextureElementSize {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TextureElementTextureFormat {
+    RG32Uint,
+    RGBA32Uint,
+    RGBA32Float,
     RGBA8Unorm,
 }
 

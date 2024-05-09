@@ -88,6 +88,15 @@ fn make_texture_element(
     let wrapping_mode_v = wrapping_mode_v.unwrap_or(TextureElementWrappingMode::Clamp);
 
     let data = match texture_format {
+        TextureElementTextureFormat::RG32Uint => {
+            return Err(anyhow!("RG32Uint format is not supported"));
+        }
+        TextureElementTextureFormat::RGBA32Uint => {
+            return Err(anyhow!("RGBA32Uint format is not supported"));
+        }
+        TextureElementTextureFormat::RGBA32Float => {
+            return Err(anyhow!("RGBA32Float format is not supported"));
+        }
         TextureElementTextureFormat::RGBA8Unorm => decoded.into_rgba8().to_vec(),
     };
 

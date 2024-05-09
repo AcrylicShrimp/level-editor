@@ -2,7 +2,10 @@ use crate::object::{make_camera_object, make_light_object, make_pmx_model_render
 use lvl_core::{
     context::{driver::Driver, Context},
     resource::load_resource_file,
-    scene::{components::LightKind, ObjectId, Scene, Transform},
+    scene::{
+        components::{LightKind, PmxModelRenderer},
+        ObjectId, Scene, Transform,
+    },
 };
 use lvl_math::{Quat, Vec3, Vec4};
 use winit::{
@@ -12,11 +15,15 @@ use winit::{
 
 pub struct DriverImpl {
     camera_id: Option<ObjectId>,
+    pmx_model_id: Option<ObjectId>,
 }
 
 impl DriverImpl {
     pub fn new() -> Self {
-        Self { camera_id: None }
+        Self {
+            camera_id: None,
+            pmx_model_id: None,
+        }
     }
 }
 
@@ -48,6 +55,10 @@ impl Driver for DriverImpl {
             .input_mut()
             .register_key("Right", PhysicalKey::Code(KeyCode::ArrowRight));
 
+        context
+            .input_mut()
+            .register_key("Space", PhysicalKey::Code(KeyCode::Space));
+
         let resource = {
             let bytes = std::fs::read("./assets/resources.res").unwrap();
             load_resource_file(&bytes).unwrap()
@@ -65,6 +76,7 @@ impl Driver for DriverImpl {
                 scene,
             );
             self.camera_id = Some(camera_id);
+
             scene.set_transform(
                 camera_id,
                 Transform::look_at(
@@ -74,7 +86,8 @@ impl Driver for DriverImpl {
                 ),
             );
 
-            make_pmx_model_renderer(&resource, "モナ・Mona", scene).unwrap();
+            let pmx_model_id = make_pmx_model_renderer(&resource, "モナ・Mona", scene).unwrap();
+            self.pmx_model_id = Some(pmx_model_id);
 
             make_light_object(
                 Vec3::new(10.0, 20.0, 10.0),
@@ -160,6 +173,23 @@ impl Driver for DriverImpl {
             }
 
             proxy.set_transform(self.camera_id.unwrap(), camera_transform);
+        });
+
+        scene.with_proxy(|proxy| {
+            let pmx_model_object = proxy
+                .find_object_by_id_mut(self.pmx_model_id.unwrap())
+                .unwrap();
+            let pmx_model_renderer = pmx_model_object
+                .find_component_by_type_mut::<PmxModelRenderer>()
+                .unwrap();
+            pmx_model_renderer.model_mut().set_morph(
+                "あ",
+                if context.input().key("Space").unwrap().is_pressed {
+                    1f32
+                } else {
+                    0f32
+                },
+            );
         });
     }
 }

@@ -1,20 +1,26 @@
 use super::{Processor, ShaderProcessor, TextureMetadata, TextureProcessor};
 use anyhow::{anyhow, Error as AnyError};
-use log::error;
+use log::{error, warn};
 use lvl_math::{Vec3, Vec4};
 use lvl_pmx::{
-    Pmx, PmxIndices, PmxMaterial, PmxMaterialEnvironmentBlendMode, PmxMaterialToonMode, PmxTexture,
-    PmxVertex, PmxVertexDeformKind,
+    Pmx, PmxIndices, PmxMaterial, PmxMaterialEnvironmentBlendMode, PmxMaterialToonMode, PmxMorph,
+    PmxMorphOffset, PmxMorphOffsetMaterialOffsetMode, PmxTexture, PmxVertex, PmxVertexDeformKind,
 };
 use lvl_resource::{
     MaterialProperty, MaterialPropertyValue, MaterialPropertyValueUniformKind, MaterialRenderState,
-    MaterialRenderType, MaterialSource, PmxModelElement, PmxModelIndexKind, PmxModelSource,
-    PmxModelVertexLayoutElement, PmxModelVertexLayoutElementKind, Resource, ResourceKind,
-    TextureElementSamplingMode, TextureElementTextureFormat, TextureElementWrappingMode,
-    TextureSource,
+    MaterialRenderType, MaterialSource, PmxModelElement, PmxModelIndexKind, PmxModelMorph,
+    PmxModelMorphGroupElement, PmxModelMorphKind, PmxModelMorphMaterialElement,
+    PmxModelMorphMaterialOffsetMode, PmxModelSource, PmxModelVertexLayoutElement,
+    PmxModelVertexLayoutElementKind, Resource, ResourceKind, TextureElement,
+    TextureElementSamplingMode, TextureElementSize, TextureElementTextureFormat,
+    TextureElementWrappingMode, TextureKind, TextureSource,
 };
 use serde::Deserialize;
-use std::{collections::BTreeMap, mem::size_of, path::Path};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap},
+    mem::size_of,
+    path::Path,
+};
 use wgpu_types::{AddressMode, FilterMode};
 use zerocopy::{ByteOrder, LittleEndian};
 
@@ -63,12 +69,45 @@ impl Processor for PmxModelProcessor {
             )
         };
 
-        let (vertex_data, vertex_layout) = make_vertex_data(&pmx.vertices);
+        let morph_data = make_morph_data(
+            &pmx.header.model_name_local,
+            pmx.vertices.len() as u32,
+            &pmx.morphs,
+        );
+        let vertex_morph_index_texture_name = format!(
+            "{}/morph-texture:{}",
+            pmx.header.model_name_local, "vertex-morph-index"
+        );
+        let uv_morph_index_texture_name = format!(
+            "{}/morph-texture:{}",
+            pmx.header.model_name_local, "uv-morph-index"
+        );
+        let vertex_displacement_texture_name = format!(
+            "{}/morph-texture:{}",
+            pmx.header.model_name_local, "vertex-displacement"
+        );
+        let uv_displacement_texture_name = format!(
+            "{}/morph-texture:{}",
+            pmx.header.model_name_local, "uv-displacement"
+        );
+
+        let (vertex_data, vertex_layout) =
+            make_vertex_data(&pmx.vertices, morph_data.vertex_attributes);
         let (index_data, index_kind, elements) =
             make_index_data(pmx_material_namer, &pmx.materials, &pmx.indices);
 
-        let pmx_model =
-            PmxModelSource::new(vertex_data, vertex_layout, index_data, index_kind, elements);
+        let pmx_model = PmxModelSource::new(
+            vertex_data,
+            vertex_layout,
+            index_data,
+            index_kind,
+            elements,
+            morph_data.morphs,
+            vertex_morph_index_texture_name.clone(),
+            uv_morph_index_texture_name.clone(),
+            vertex_displacement_texture_name.clone(),
+            uv_displacement_texture_name.clone(),
+        );
         let pmx_model_resource = Resource {
             name: pmx.header.model_name_local.clone(),
             kind: ResourceKind::PmxModel(pmx_model),
@@ -89,6 +128,10 @@ impl Processor for PmxModelProcessor {
                 render_type,
                 pmx_material,
                 &pmx.textures,
+                &vertex_morph_index_texture_name,
+                &uv_morph_index_texture_name,
+                &vertex_displacement_texture_name,
+                &uv_displacement_texture_name,
             );
             let resource = Resource {
                 name: pmx_material_namer(pmx_material),
@@ -142,6 +185,10 @@ impl Processor for PmxModelProcessor {
         let shader_source = ShaderProcessor::generate_shader_resource_from_wsgl_content(
             &shader_name,
             shader_content.to_owned(),
+            &BTreeSet::from_iter(vec![
+                "vertex_displacement_texture".to_owned(),
+                "uv_displacement_texture".to_owned(),
+            ]),
         );
 
         let mut resources = Vec::with_capacity(1 + pmx.materials.len() + pmx.textures.len());
@@ -163,6 +210,22 @@ impl Processor for PmxModelProcessor {
         }
 
         resources.push(pmx_model_resource);
+        resources.push(Resource {
+            name: vertex_morph_index_texture_name,
+            kind: ResourceKind::Texture(morph_data.vertex_morph_index_texture_source),
+        });
+        resources.push(Resource {
+            name: uv_morph_index_texture_name,
+            kind: ResourceKind::Texture(morph_data.uv_morph_index_texture_source),
+        });
+        resources.push(Resource {
+            name: vertex_displacement_texture_name,
+            kind: ResourceKind::Texture(morph_data.vertex_displacement_texture_source),
+        });
+        resources.push(Resource {
+            name: uv_displacement_texture_name,
+            kind: ResourceKind::Texture(morph_data.uv_displacement_texture_source),
+        });
         resources.extend(materials);
         resources.extend(textures);
 
@@ -170,7 +233,434 @@ impl Processor for PmxModelProcessor {
     }
 }
 
-fn make_vertex_data(pmx_vertices: &[PmxVertex]) -> (Vec<u8>, Vec<PmxModelVertexLayoutElement>) {
+struct MorphData {
+    pub morphs: Vec<PmxModelMorph>,
+    pub vertex_morph_index_texture_source: TextureSource,
+    pub uv_morph_index_texture_source: TextureSource,
+    pub vertex_displacement_texture_source: TextureSource,
+    pub uv_displacement_texture_source: TextureSource,
+    pub vertex_attributes: Vec<MorphVertexAttribute>,
+}
+
+#[derive(Default, Clone)]
+struct MorphVertexAttribute {
+    pub vertex_morph_index_start: u32,
+    pub vertex_morph_count: u32,
+    pub uv_morph_index_start: u32,
+    pub uv_morph_count: u32,
+}
+
+fn make_morph_data(pmx_name: &str, vertex_count: u32, pmx_morphs: &[PmxMorph]) -> MorphData {
+    let mut morphs = Vec::with_capacity(pmx_morphs.len());
+
+    /// Encoded as texture format `RG32U`
+    struct VertexMorphIndex {
+        pub morph_index: u32,
+        pub displacement_index: u32,
+    }
+
+    /// Encoded as texture format `RGBA32U` (alpha is not used)
+    struct UvMorphIndex {
+        /// - 0 for uv
+        /// - 1 for additional 1
+        /// - 2 for additional 2
+        /// - 3 for additional 3
+        /// - 4 for additional 4
+        pub index: u32,
+        pub morph_index: u32,
+        pub displacement_index: u32,
+    }
+
+    let mut vertex_morph_index_map = HashMap::<u32, Vec<VertexMorphIndex>>::new();
+    let mut uv_morph_index_map = HashMap::<u32, Vec<UvMorphIndex>>::new();
+
+    let mut vertex_displacements = Vec::new();
+    let mut uv_displacements = Vec::new();
+
+    for (morph_index, morph) in pmx_morphs.iter().enumerate() {
+        let morph_name = morph.name_local.clone();
+        let morph_kind = match &morph.offset {
+            PmxMorphOffset::Group(elements) => {
+                let mut group_elements = Vec::with_capacity(elements.len());
+
+                for element in elements {
+                    let morph_index = element.index.get();
+
+                    if morph_index < 0 || pmx_morphs.len() <= morph_index as usize {
+                        continue;
+                    }
+
+                    group_elements.push(PmxModelMorphGroupElement {
+                        morph_index: morph_index as u32,
+                        coefficient: element.coefficient,
+                    });
+                }
+
+                PmxModelMorphKind::Group(group_elements)
+            }
+            PmxMorphOffset::Vertex(vertices) => {
+                for vertex in vertices {
+                    let vertex_index = vertex.index.get();
+
+                    vertex_morph_index_map
+                        .entry(vertex_index)
+                        .or_default()
+                        .push(VertexMorphIndex {
+                            morph_index: morph_index as u32,
+                            displacement_index: vertex_displacements.len() as u32,
+                        });
+
+                    vertex_displacements.push(Vec3::new(
+                        vertex.translation.x,
+                        vertex.translation.y,
+                        vertex.translation.z,
+                    ));
+                }
+
+                PmxModelMorphKind::Vertex
+            }
+            PmxMorphOffset::Bone(_) => PmxModelMorphKind::Bone,
+            PmxMorphOffset::Uv { offsets, uv_index } => {
+                for uv in offsets {
+                    let vertex_index = uv.index.get();
+
+                    uv_morph_index_map
+                        .entry(vertex_index)
+                        .or_default()
+                        .push(UvMorphIndex {
+                            index: *uv_index as u32,
+                            morph_index: morph_index as u32,
+                            displacement_index: uv_displacements.len() as u32,
+                        });
+
+                    uv_displacements.push(Vec4::new(uv.vec4.x, uv.vec4.y, uv.vec4.z, uv.vec4.w));
+                }
+
+                PmxModelMorphKind::Uv
+            }
+            PmxMorphOffset::Material(elements) => {
+                let mut material_elements = Vec::with_capacity(elements.len());
+
+                for element in elements {
+                    let material_index = element.index.get();
+                    let material_index =
+                        if material_index < 0 || pmx_morphs.len() <= material_index as usize {
+                            None
+                        } else {
+                            Some(material_index as u32)
+                        };
+
+                    material_elements.push(PmxModelMorphMaterialElement {
+                        material_index,
+                        offset_mode: match element.offset_mode {
+                            PmxMorphOffsetMaterialOffsetMode::Multiply => {
+                                PmxModelMorphMaterialOffsetMode::Multiply
+                            }
+                            PmxMorphOffsetMaterialOffsetMode::Additive => {
+                                PmxModelMorphMaterialOffsetMode::Additive
+                            }
+                        },
+                        diffuse_color: Vec4::new(
+                            element.diffuse_color.x,
+                            element.diffuse_color.y,
+                            element.diffuse_color.z,
+                            element.diffuse_color.w,
+                        ),
+                        specular_color: Vec3::new(
+                            element.specular_color.x,
+                            element.specular_color.y,
+                            element.specular_color.z,
+                        ),
+                        specular_strength: element.specular_strength,
+                        ambient_color: Vec3::new(
+                            element.ambient_color.x,
+                            element.ambient_color.y,
+                            element.ambient_color.z,
+                        ),
+                        edge_color: Vec4::new(
+                            element.edge_color.x,
+                            element.edge_color.y,
+                            element.edge_color.z,
+                            element.edge_color.w,
+                        ),
+                        edge_size: element.edge_size,
+                        texture_tint_color: Vec4::new(
+                            element.texture_tint_color.x,
+                            element.texture_tint_color.y,
+                            element.texture_tint_color.z,
+                            element.texture_tint_color.w,
+                        ),
+                        environment_tint_color: Vec4::new(
+                            element.environment_tint_color.x,
+                            element.environment_tint_color.y,
+                            element.environment_tint_color.z,
+                            element.environment_tint_color.w,
+                        ),
+                        toon_tint_color: Vec4::new(
+                            element.toon_tint_color.x,
+                            element.toon_tint_color.y,
+                            element.toon_tint_color.z,
+                            element.toon_tint_color.w,
+                        ),
+                    })
+                }
+
+                PmxModelMorphKind::Material(material_elements)
+            }
+            PmxMorphOffset::Flip(elements) => {
+                let mut group_elements = Vec::with_capacity(elements.len());
+
+                for element in elements {
+                    let morph_index = element.index.get();
+
+                    if morph_index < 0 || pmx_morphs.len() <= morph_index as usize {
+                        continue;
+                    }
+
+                    group_elements.push(PmxModelMorphGroupElement {
+                        morph_index: morph_index as u32,
+                        coefficient: -element.coefficient,
+                    });
+                }
+
+                PmxModelMorphKind::Group(group_elements)
+            }
+            PmxMorphOffset::Impulse(_) => PmxModelMorphKind::Impulse,
+        };
+
+        morphs.push(PmxModelMorph {
+            name: morph_name,
+            kind: morph_kind,
+        });
+    }
+
+    let mut vertex_attributes = vec![MorphVertexAttribute::default(); vertex_count as usize];
+    let mut vertex_morph_indices = Vec::new();
+    let mut uv_morph_indices = Vec::new();
+
+    for (vertex_index, morph_indices) in vertex_morph_index_map {
+        let attribute = &mut vertex_attributes[vertex_index as usize];
+
+        attribute.vertex_morph_index_start = vertex_morph_indices.len() as u32;
+        attribute.vertex_morph_count = morph_indices.len() as u32;
+
+        vertex_morph_indices.extend(morph_indices);
+    }
+
+    for (vertex_index, morph_indices) in uv_morph_index_map {
+        let attribute = &mut vertex_attributes[vertex_index as usize];
+
+        attribute.uv_morph_index_start = uv_morph_indices.len() as u32;
+        attribute.uv_morph_count = morph_indices.len() as u32;
+
+        uv_morph_indices.extend(morph_indices);
+    }
+
+    let vertex_morph_index_texture_size =
+        ((vertex_morph_indices.len() as f32).sqrt().ceil() as u32).max(1);
+    let uv_morph_index_texture_size = ((uv_morph_indices.len() as f32).sqrt().ceil() as u32).max(1);
+    let vertex_displacement_texture_size =
+        ((vertex_displacements.len() as f32).sqrt().ceil() as u32).max(1);
+    let uv_displacement_texture_size =
+        ((uv_displacements.len() as f32).sqrt().ceil() as u32).max(1);
+
+    if 2048 < vertex_morph_index_texture_size {
+        warn!(
+            "for the PMX model `{}`, vertex morph index texture size `{}` exceeds the maximum texture size of 2048; it may not be able to be used as a texture",
+            pmx_name,
+            vertex_morph_index_texture_size
+        );
+    }
+
+    if 2048 < uv_morph_index_texture_size {
+        warn!(
+            "for the PMX model `{}`, uv morph index texture size `{}` exceeds the maximum texture size of 2048; it may not be able to be used as a texture",
+            pmx_name,
+            uv_morph_index_texture_size
+        );
+    }
+
+    if 2048 < vertex_displacement_texture_size {
+        warn!(
+            "for the PMX model `{}`, vertex displacement texture size `{}` exceeds the maximum texture size of 2048; it may not be able to be used as a texture",
+            pmx_name,
+            vertex_displacement_texture_size
+        );
+    }
+
+    if 2048 < uv_displacement_texture_size {
+        warn!(
+            "for the PMX model `{}`, uv displacement texture size `{}` exceeds the maximum texture size of 2048; it may not be able to be used as a texture",
+            pmx_name,
+            uv_displacement_texture_size
+        );
+    }
+
+    let mut vertex_morph_index_texels = Vec::with_capacity(
+        (vertex_morph_index_texture_size * vertex_morph_index_texture_size) as usize
+            * size_of::<[u32; 2]>(),
+    );
+    let mut uv_morph_index_texels = Vec::with_capacity(
+        (uv_morph_index_texture_size * uv_morph_index_texture_size) as usize
+            * size_of::<[u32; 4]>(),
+    );
+    let mut vertex_displacement_texels = Vec::with_capacity(
+        (vertex_displacement_texture_size * vertex_displacement_texture_size) as usize
+            * size_of::<[f32; 4]>(),
+    );
+    let mut uv_displacement_texels = Vec::with_capacity(
+        (uv_displacement_texture_size * uv_displacement_texture_size) as usize
+            * size_of::<[f32; 4]>(),
+    );
+
+    for index in &vertex_morph_indices {
+        let mut x = [0u8; size_of::<u32>()];
+        let mut y = [0u8; size_of::<u32>()];
+
+        LittleEndian::write_u32(&mut x, index.morph_index);
+        LittleEndian::write_u32(&mut y, index.displacement_index);
+
+        vertex_morph_index_texels.extend(x);
+        vertex_morph_index_texels.extend(y);
+    }
+
+    for index in &uv_morph_indices {
+        let mut x = [0u8; size_of::<u32>()];
+        let mut y = [0u8; size_of::<u32>()];
+        let mut z = [0u8; size_of::<u32>()];
+        let mut w = [0u8; size_of::<u32>()];
+
+        LittleEndian::write_u32(&mut x, index.index);
+        LittleEndian::write_u32(&mut y, index.morph_index);
+        LittleEndian::write_u32(&mut z, index.displacement_index);
+        LittleEndian::write_u32(&mut w, 0);
+
+        uv_morph_index_texels.extend(x);
+        uv_morph_index_texels.extend(y);
+        uv_morph_index_texels.extend(z);
+        uv_morph_index_texels.extend(w);
+    }
+
+    for displacement in &vertex_displacements {
+        let mut x = [0u8; size_of::<f32>()];
+        let mut y = [0u8; size_of::<f32>()];
+        let mut z = [0u8; size_of::<f32>()];
+        let mut w = [0u8; size_of::<f32>()];
+
+        LittleEndian::write_f32(&mut x, displacement.x);
+        LittleEndian::write_f32(&mut y, displacement.y);
+        LittleEndian::write_f32(&mut z, displacement.z);
+        LittleEndian::write_f32(&mut w, 0f32);
+
+        vertex_displacement_texels.extend(x);
+        vertex_displacement_texels.extend(y);
+        vertex_displacement_texels.extend(z);
+        vertex_displacement_texels.extend(w);
+    }
+
+    for displacement in &uv_displacements {
+        let mut x = [0u8; size_of::<f32>()];
+        let mut y = [0u8; size_of::<f32>()];
+        let mut z = [0u8; size_of::<f32>()];
+        let mut w = [0u8; size_of::<f32>()];
+
+        LittleEndian::write_f32(&mut x, displacement.x);
+        LittleEndian::write_f32(&mut y, displacement.y);
+        LittleEndian::write_f32(&mut z, displacement.z);
+        LittleEndian::write_f32(&mut w, displacement.w);
+
+        uv_displacement_texels.extend(x);
+        uv_displacement_texels.extend(y);
+        uv_displacement_texels.extend(z);
+        uv_displacement_texels.extend(w);
+    }
+
+    vertex_morph_index_texels.extend(std::iter::repeat(0u8).take(
+        ((vertex_morph_index_texture_size * vertex_morph_index_texture_size) as usize)
+            * size_of::<[u32; 2]>()
+            - vertex_morph_index_texels.len(),
+    ));
+
+    uv_morph_index_texels.extend(std::iter::repeat(0u8).take(
+        ((uv_morph_index_texture_size * uv_morph_index_texture_size) as usize)
+            * size_of::<[u32; 4]>()
+            - uv_morph_index_texels.len(),
+    ));
+
+    vertex_displacement_texels.extend(std::iter::repeat(0u8).take(
+        ((vertex_displacement_texture_size * vertex_displacement_texture_size) as usize)
+            * size_of::<[u32; 4]>()
+            - vertex_displacement_texels.len(),
+    ));
+
+    uv_displacement_texels.extend(std::iter::repeat(0u8).take(
+        ((uv_displacement_texture_size * uv_displacement_texture_size) as usize)
+            * size_of::<[u32; 4]>()
+            - uv_displacement_texels.len(),
+    ));
+
+    let vertex_morph_index_texture = TextureSource::new(TextureKind::Single(TextureElement {
+        data: vertex_morph_index_texels,
+        size: TextureElementSize {
+            width: vertex_morph_index_texture_size as u16,
+            height: vertex_morph_index_texture_size as u16,
+        },
+        texture_format: TextureElementTextureFormat::RG32Uint,
+        sampling_mode: TextureElementSamplingMode::Point,
+        wrapping_mode_u: TextureElementWrappingMode::Clamp,
+        wrapping_mode_v: TextureElementWrappingMode::Clamp,
+    }));
+
+    let uv_morph_index_texture = TextureSource::new(TextureKind::Single(TextureElement {
+        data: uv_morph_index_texels,
+        size: TextureElementSize {
+            width: uv_morph_index_texture_size as u16,
+            height: uv_morph_index_texture_size as u16,
+        },
+        texture_format: TextureElementTextureFormat::RGBA32Uint,
+        sampling_mode: TextureElementSamplingMode::Point,
+        wrapping_mode_u: TextureElementWrappingMode::Clamp,
+        wrapping_mode_v: TextureElementWrappingMode::Clamp,
+    }));
+
+    let vertex_displacement_texture = TextureSource::new(TextureKind::Single(TextureElement {
+        data: vertex_displacement_texels,
+        size: TextureElementSize {
+            width: vertex_displacement_texture_size as u16,
+            height: vertex_displacement_texture_size as u16,
+        },
+        texture_format: TextureElementTextureFormat::RGBA32Float,
+        sampling_mode: TextureElementSamplingMode::Point,
+        wrapping_mode_u: TextureElementWrappingMode::Clamp,
+        wrapping_mode_v: TextureElementWrappingMode::Clamp,
+    }));
+
+    let uv_displacement_texture = TextureSource::new(TextureKind::Single(TextureElement {
+        data: uv_displacement_texels,
+        size: TextureElementSize {
+            width: uv_displacement_texture_size as u16,
+            height: uv_displacement_texture_size as u16,
+        },
+        texture_format: TextureElementTextureFormat::RGBA32Float,
+        sampling_mode: TextureElementSamplingMode::Point,
+        wrapping_mode_u: TextureElementWrappingMode::Clamp,
+        wrapping_mode_v: TextureElementWrappingMode::Clamp,
+    }));
+
+    MorphData {
+        morphs,
+        vertex_morph_index_texture_source: vertex_morph_index_texture,
+        uv_morph_index_texture_source: uv_morph_index_texture,
+        vertex_displacement_texture_source: vertex_displacement_texture,
+        uv_displacement_texture_source: uv_displacement_texture,
+        vertex_attributes,
+    }
+}
+
+fn make_vertex_data(
+    pmx_vertices: &[PmxVertex],
+    morph_vertex_attributes: Vec<MorphVertexAttribute>,
+) -> (Vec<u8>, Vec<PmxModelVertexLayoutElement>) {
     let layout_elements = vec![
         PmxModelVertexLayoutElement {
             kind: PmxModelVertexLayoutElementKind::Position,
@@ -228,10 +718,26 @@ fn make_vertex_data(pmx_vertices: &[PmxVertex]) -> (Vec<u8>, Vec<PmxModelVertexL
             kind: PmxModelVertexLayoutElementKind::EdgeSize,
             offset: size_of::<[[u8; 4]; 42]>() as u64,
         },
+        PmxModelVertexLayoutElement {
+            kind: PmxModelVertexLayoutElementKind::VertexMorphIndexStart,
+            offset: size_of::<[[u8; 4]; 43]>() as u64,
+        },
+        PmxModelVertexLayoutElement {
+            kind: PmxModelVertexLayoutElementKind::VertexMorphCount,
+            offset: size_of::<[[u8; 4]; 44]>() as u64,
+        },
+        PmxModelVertexLayoutElement {
+            kind: PmxModelVertexLayoutElementKind::UvMorphIndexStart,
+            offset: size_of::<[[u8; 4]; 45]>() as u64,
+        },
+        PmxModelVertexLayoutElement {
+            kind: PmxModelVertexLayoutElementKind::UvMorphCount,
+            offset: size_of::<[[u8; 4]; 46]>() as u64,
+        },
     ];
 
     let mut position = 0;
-    let mut vertex_data = vec![0; size_of::<[[u8; 4]; 43]>() * pmx_vertices.len()];
+    let mut vertex_data = vec![0; size_of::<[[u8; 4]; 47]>() * pmx_vertices.len()];
 
     let mut write = |data: &[u8]| {
         vertex_data[position..position + data.len()].copy_from_slice(data);
@@ -268,7 +774,7 @@ fn make_vertex_data(pmx_vertices: &[PmxVertex]) -> (Vec<u8>, Vec<PmxModelVertexL
         }};
     }
 
-    for pmx_vertex in pmx_vertices {
+    for (index, pmx_vertex) in pmx_vertices.iter().enumerate() {
         // position
         write!(write, pmx_vertex.position.x);
         write!(write, pmx_vertex.position.y);
@@ -515,6 +1021,20 @@ fn make_vertex_data(pmx_vertices: &[PmxVertex]) -> (Vec<u8>, Vec<PmxModelVertexL
 
         // edge size
         write!(write, pmx_vertex.edge_size);
+
+        let vertex_morph_attribute = &morph_vertex_attributes[index];
+
+        // vertex morph index start
+        write!(write, vertex_morph_attribute.vertex_morph_index_start);
+
+        // vertex morph count
+        write!(write, vertex_morph_attribute.vertex_morph_count);
+
+        // uv morph index start
+        write!(write, vertex_morph_attribute.uv_morph_index_start);
+
+        // uv morph count
+        write!(write, vertex_morph_attribute.uv_morph_count);
     }
 
     (vertex_data, layout_elements)
@@ -558,8 +1078,40 @@ fn make_material_source(
     render_type: MaterialRenderType,
     pmx_material: &PmxMaterial,
     pmx_textures: &[PmxTexture],
+    vertex_morph_index_texture_name: &str,
+    uv_morph_index_texture_name: &str,
+    vertex_displacement_texture_name: &str,
+    uv_displacement_texture_name: &str,
 ) -> MaterialSource {
     let mut properties = vec![];
+
+    properties.push(MaterialProperty {
+        name: "vertex_morph_index_texture".to_owned(),
+        value: MaterialPropertyValue::Texture {
+            texture_name: vertex_morph_index_texture_name.to_owned(),
+        },
+    });
+
+    properties.push(MaterialProperty {
+        name: "uv_morph_index_texture".to_owned(),
+        value: MaterialPropertyValue::Texture {
+            texture_name: uv_morph_index_texture_name.to_owned(),
+        },
+    });
+
+    properties.push(MaterialProperty {
+        name: "vertex_displacement_texture".to_owned(),
+        value: MaterialPropertyValue::Texture {
+            texture_name: vertex_displacement_texture_name.to_owned(),
+        },
+    });
+
+    properties.push(MaterialProperty {
+        name: "uv_displacement_texture".to_owned(),
+        value: MaterialPropertyValue::Texture {
+            texture_name: uv_displacement_texture_name.to_owned(),
+        },
+    });
 
     let pmx_texture_index = pmx_material.texture_index.get();
 

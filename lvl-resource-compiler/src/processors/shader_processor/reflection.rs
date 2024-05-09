@@ -2,7 +2,7 @@ use log::warn;
 use lvl_resource::{ShaderBinding, ShaderBindingKind, ShaderUniformMember};
 use naga::{
     AddressSpace, ArraySize, Binding, ImageClass, ImageDimension, Module, ScalarKind, ShaderStage,
-    Type, TypeInner, VectorSize,
+    StorageAccess, Type, TypeInner, VectorSize,
 };
 use std::{
     collections::{btree_map::Entry, BTreeMap, BTreeSet},
@@ -12,6 +12,7 @@ use wgpu_types::{SamplerBindingType, TextureSampleType, TextureViewDimension};
 
 pub fn inspect_bindings(
     module: &Module,
+    non_filterable_texture_names: &BTreeSet<String>,
     builtin_uniform_bind_group: Option<u32>,
 ) -> Vec<ShaderBinding> {
     let mut bindings = Vec::with_capacity(module.global_variables.len());
@@ -38,17 +39,35 @@ pub fn inspect_bindings(
 
         let kind = match variable.space {
             AddressSpace::Uniform | AddressSpace::Handle => {
-                match shader_ty_to_binding_kind(buffer_count, module, &module.types[variable.ty]) {
+                match shader_ty_to_binding_kind(
+                    buffer_count,
+                    module,
+                    &module.types[variable.ty],
+                    !non_filterable_texture_names.contains(name),
+                ) {
                     Some(kind) => kind,
                     None => {
                         continue;
                     }
                 }
             }
+            AddressSpace::Storage { access } => {
+                let size = match resolve_shader_ty_size(module, &module.types[variable.ty], false) {
+                    Some(size) => size,
+                    None => {
+                        continue;
+                    }
+                };
+
+                ShaderBindingKind::StorageBuffer {
+                    read: access.intersects(StorageAccess::LOAD),
+                    write: access.intersects(StorageAccess::STORE),
+                    size,
+                }
+            }
             AddressSpace::Function
             | AddressSpace::Private
             | AddressSpace::WorkGroup
-            | AddressSpace::Storage { .. }
             | AddressSpace::PushConstant => {
                 continue;
             }
@@ -76,6 +95,7 @@ fn shader_ty_to_binding_kind(
     buffer_count: u32,
     module: &Module,
     ty: &Type,
+    filterable: bool,
 ) -> Option<ShaderBindingKind> {
     match &ty.inner {
         TypeInner::Scalar(_)
@@ -84,7 +104,7 @@ fn shader_ty_to_binding_kind(
         | TypeInner::Atomic(_)
         | TypeInner::Array { .. }
         | TypeInner::Struct { .. } => {
-            resolve_shader_ty_size(module, ty).map(|size| ShaderBindingKind::UniformBuffer {
+            resolve_shader_ty_size(module, ty, true).map(|size| ShaderBindingKind::UniformBuffer {
                 size,
                 index: buffer_count,
                 is_struct: if let TypeInner::Struct { .. } = &ty.inner {
@@ -116,7 +136,7 @@ fn shader_ty_to_binding_kind(
                     let sample_type = match kind {
                         ScalarKind::Sint => TextureSampleType::Sint,
                         ScalarKind::Uint => TextureSampleType::Uint,
-                        ScalarKind::Float => TextureSampleType::Float { filterable: true },
+                        ScalarKind::Float => TextureSampleType::Float { filterable },
                         ScalarKind::Bool | ScalarKind::AbstractInt | ScalarKind::AbstractFloat => {
                             return None;
                         }
@@ -151,10 +171,14 @@ fn shader_ty_to_binding_kind(
     }
 }
 
-fn resolve_shader_ty_size(module: &Module, ty: &Type) -> Option<NonZeroU64> {
-    fn aligned_size(size: u64, alignment: u64) -> u64 {
-        (size + alignment - 1) / alignment * alignment
-    }
+fn resolve_shader_ty_size(module: &Module, ty: &Type, aligned: bool) -> Option<NonZeroU64> {
+    let aligned_size = |size: u64, alignment: u64| -> u64 {
+        if aligned {
+            (size + alignment - 1) / alignment * alignment
+        } else {
+            size
+        }
+    };
 
     fn parse_array_size(size: ArraySize) -> Option<u32> {
         let size = match size {
@@ -221,7 +245,7 @@ fn resolve_shader_ty_size(module: &Module, ty: &Type) -> Option<NonZeroU64> {
         TypeInner::AccelerationStructure => None,
         TypeInner::RayQuery => None,
         TypeInner::BindingArray { base, size } => {
-            let base_size = match resolve_shader_ty_size(module, &module.types[*base]) {
+            let base_size = match resolve_shader_ty_size(module, &module.types[*base], aligned) {
                 Some(base_size) => base_size,
                 None => return None,
             };
@@ -273,7 +297,7 @@ pub fn inspect_uniform_members(
             } else {
                 continue;
             };
-            let size = match resolve_shader_ty_size(module, &module.types[member.ty]) {
+            let size = match resolve_shader_ty_size(module, &module.types[member.ty], true) {
                 Some(size) => size,
                 None => {
                     continue;

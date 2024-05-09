@@ -9,7 +9,7 @@ use super::Processor;
 use anyhow::{anyhow, Context, Error as AnyError};
 use lvl_resource::{Resource, ResourceKind, ShaderSource};
 use naga::{Module, ShaderStage};
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 pub struct ShaderProcessor;
 
@@ -17,6 +17,7 @@ impl ShaderProcessor {
     pub fn generate_shader_resource_from_wsgl_content(
         display_name: &str,
         content: String,
+        non_filterable_texture_names: &BTreeSet<String>,
     ) -> Result<ShaderSource, AnyError> {
         let expanded = expand_wgsl_shader_content(&content)?;
         let module = naga::front::wgsl::parse_str(&expanded.content).with_context(|| {
@@ -30,6 +31,7 @@ impl ShaderProcessor {
             display_name,
             expanded.content,
             &module,
+            non_filterable_texture_names,
             expanded.builtin_uniform_bind_group,
             expanded.instance_input_typename.as_deref(),
         )
@@ -39,6 +41,7 @@ impl ShaderProcessor {
         display_name: &str,
         content: String,
         module: &Module,
+        non_filterable_texture_names: &BTreeSet<String>,
         builtin_uniform_bind_group: Option<u32>,
         instance_input_typename: Option<&str>,
     ) -> Result<ShaderSource, AnyError> {
@@ -78,7 +81,11 @@ impl ShaderProcessor {
             }
         };
 
-        let bindings = inspect_bindings(module, builtin_uniform_bind_group);
+        let bindings = inspect_bindings(
+            module,
+            non_filterable_texture_names,
+            builtin_uniform_bind_group,
+        );
         let uniform_bindings = inspect_uniform_members(module, builtin_uniform_bind_group);
         let locations = inspect_locations(display_name, module, instance_input_typename);
 
@@ -104,8 +111,11 @@ impl Processor for ShaderProcessor {
     fn process(file: &Path, _metadata: Option<&Self::Metadata>) -> Result<Vec<Resource>, AnyError> {
         let name = file.file_stem().unwrap().to_string_lossy().to_string();
         let content = std::fs::read_to_string(file)?;
-        let source = Self::generate_shader_resource_from_wsgl_content(&name, content)
-            .with_context(|| format!("failed to process the file `{}` as a wgsl shader", name))?;
+        let source =
+            Self::generate_shader_resource_from_wsgl_content(&name, content, &BTreeSet::new())
+                .with_context(|| {
+                    format!("failed to process the file `{}` as a wgsl shader", name)
+                })?;
 
         Ok(vec![Resource {
             name,

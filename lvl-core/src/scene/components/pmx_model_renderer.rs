@@ -37,6 +37,10 @@ impl PmxModelRenderer {
         &self.model
     }
 
+    pub fn model_mut(&mut self) -> &mut PmxModel {
+        &mut self.model
+    }
+
     pub(crate) fn construct_render_pipelines(
         &self,
         instance_data_size: u64,
@@ -181,6 +185,12 @@ fn shader_input_name_from_vertex_layout_kind(kind: PmxModelVertexLayoutElementKi
         PmxModelVertexLayoutElementKind::SdefR0 => "sdef_r0".to_owned(),
         PmxModelVertexLayoutElementKind::SdefR1 => "sdef_r1".to_owned(),
         PmxModelVertexLayoutElementKind::EdgeSize => "edge_size".to_owned(),
+        PmxModelVertexLayoutElementKind::VertexMorphIndexStart => {
+            "vertex_morph_index_start".to_owned()
+        }
+        PmxModelVertexLayoutElementKind::UvMorphIndexStart => "uv_morph_index_start".to_owned(),
+        PmxModelVertexLayoutElementKind::VertexMorphCount => "vertex_morph_count".to_owned(),
+        PmxModelVertexLayoutElementKind::UvMorphCount => "uv_morph_count".to_owned(),
     }
 }
 
@@ -198,6 +208,10 @@ fn vertex_format_from_vertex_layout_kind(kind: PmxModelVertexLayoutElementKind) 
         PmxModelVertexLayoutElementKind::SdefR0 => VertexFormat::Float32x3,
         PmxModelVertexLayoutElementKind::SdefR1 => VertexFormat::Float32x3,
         PmxModelVertexLayoutElementKind::EdgeSize => VertexFormat::Float32,
+        PmxModelVertexLayoutElementKind::VertexMorphIndexStart => VertexFormat::Uint32,
+        PmxModelVertexLayoutElementKind::UvMorphIndexStart => VertexFormat::Uint32,
+        PmxModelVertexLayoutElementKind::VertexMorphCount => VertexFormat::Uint32,
+        PmxModelVertexLayoutElementKind::UvMorphCount => VertexFormat::Uint32,
     }
 }
 

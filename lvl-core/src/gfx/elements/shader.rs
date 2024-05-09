@@ -49,6 +49,11 @@ impl Shader {
                         has_dynamic_offset: false,
                         min_binding_size: Some(size),
                     },
+                    ShaderBindingKind::StorageBuffer { write, size, .. } => BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: !write },
+                        has_dynamic_offset: false,
+                        min_binding_size: Some(size),
+                    },
                     ShaderBindingKind::Texture {
                         sample_type,
                         view_dimension,
