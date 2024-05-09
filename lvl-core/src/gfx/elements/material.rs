@@ -104,6 +104,7 @@ impl Material {
             let mut value = match source.properties().get(&binding.name) {
                 Some(property) => match &property.value {
                     lvl_resource::MaterialPropertyValue::Texture { texture_name } => {
+                        // TODO: do not load texture on-the-fly here; take textures from cached context instead
                         match resource.find::<TextureSource>(texture_name) {
                             Some(source) => match source.kind() {
                                 TextureKind::Single(element) => {

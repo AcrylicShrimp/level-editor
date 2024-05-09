@@ -57,7 +57,7 @@ impl FromResourceKind for PmxModelSource {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PmxModelVertexLayoutElement {
     pub kind: PmxModelVertexLayoutElementKind,
     pub offset: u64,
@@ -65,30 +65,29 @@ pub struct PmxModelVertexLayoutElement {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PmxModelVertexLayoutElementKind {
-    /// vec3
+    /// `vec3f`
     Position,
-    /// vec3
+    /// `vec3f`
     Normal,
-    /// vec2
+    /// `vec2f`
     TexCoord,
-    /// vec3
+    /// `vec3f`
     Tangent,
-    /// vec4
+    /// `vec4f`
     AdditionalVec4(u8),
-    /// u32
-    /// Bdef1 = 0, Bdef2 = 1, Bdef4 = 2, Sdef = 3, Qdef = 4
+    /// `u32`, Bdef1 = 0, Bdef2 = 1, Bdef4 = 2, Sdef = 3, Qdef = 4
     DeformKind,
-    /// vec4<i32>, -1 for none
+    /// `vec4i`, -1 for none
     BoneIndex,
-    /// vec4
+    /// `vec4f`
     BoneWeight,
-    /// vec3
+    /// `vec3f`
     SdefC,
-    /// vec3
+    /// `vec3f`
     SdefR0,
-    /// vec3
+    /// `vec3f`
     SdefR1,
-    /// float
+    /// `float`
     EdgeSize,
 }
 
