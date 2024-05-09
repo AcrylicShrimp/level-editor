@@ -1,4 +1,4 @@
-use super::{Processor, TextureMetadata, TextureProcessor};
+use super::{Processor, ShaderProcessor, TextureMetadata, TextureProcessor};
 use anyhow::{anyhow, Error as AnyError};
 use log::error;
 use lvl_math::{Vec3, Vec4};
@@ -41,15 +41,15 @@ impl Processor for PmxModelProcessor {
         let content = std::fs::read(file)?;
         let pmx = Pmx::parse(&content)?;
 
+        let shader_name = format!("{}/shader:{}", pmx.header.model_name_local, "standard");
+
         let pmx_material_namer = |pmx_material: &PmxMaterial| -> String {
             format!(
                 "{}/material:{}",
                 pmx.header.model_name_local, pmx_material.name_local
             )
         };
-        let pmx_shader_namer = |_pmx_material: &PmxMaterial| -> String {
-            format!("{}/shader:{}", pmx.header.model_name_local, "standard")
-        };
+        let pmx_shader_namer = |_pmx_material: &PmxMaterial| -> String { shader_name.clone() };
         let pmx_texture_namer = |pmx_texture: &PmxTexture| -> String {
             format!(
                 "{}/texture:{}",
@@ -138,7 +138,30 @@ impl Processor for PmxModelProcessor {
             textures.push(resource);
         }
 
+        let shader_content = include_str!("../../assets/standard.wgsl");
+        let shader_source = ShaderProcessor::generate_shader_resource_from_wsgl_content(
+            &shader_name,
+            shader_content.to_owned(),
+        );
+
         let mut resources = Vec::with_capacity(1 + pmx.materials.len() + pmx.textures.len());
+
+        match shader_source {
+            Ok(source) => {
+                let resource = Resource {
+                    name: shader_name,
+                    kind: ResourceKind::Shader(source),
+                };
+                resources.push(resource);
+            }
+            Err(err) => {
+                error!(
+                    "failed to process shader `{}`; it will be ignored: {}",
+                    shader_name, err
+                );
+            }
+        }
+
         resources.push(pmx_model_resource);
         resources.extend(materials);
         resources.extend(textures);

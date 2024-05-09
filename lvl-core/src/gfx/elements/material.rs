@@ -305,16 +305,16 @@ impl Material {
                     continue;
                 }
 
-                let value = match property.value.as_ref() {
-                    Some(value) => value,
-                    None => {
-                        return None;
-                    }
-                };
-
                 match &property.kind {
                     MaterialPropertyKind::UniformMember { .. } => {}
                     _ => {
+                        continue;
+                    }
+                };
+
+                let value = match property.value.as_ref() {
+                    Some(value) => value,
+                    None => {
                         continue;
                     }
                 };
@@ -488,6 +488,19 @@ impl MaterialPropertyKind {
             Self::Sampler => {
                 matches!(value, MaterialPropertyValue::Sampler(_))
             }
+        }
+    }
+
+    pub fn default_value(&self) -> Option<MaterialPropertyValue> {
+        match self {
+            MaterialPropertyKind::UniformBuffer { .. } => {
+                Some(MaterialPropertyValue::Vec4(Vec4::ZERO))
+            }
+            MaterialPropertyKind::UniformMember { .. } => {
+                Some(MaterialPropertyValue::Vec4(Vec4::ZERO))
+            }
+            MaterialPropertyKind::Texture => None,
+            MaterialPropertyKind::Sampler => None,
         }
     }
 }

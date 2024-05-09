@@ -1,29 +1,28 @@
 use crate::gfx::BufferSlicer;
-use std::cell::RefMut;
+use std::{cell::RefMut, sync::Arc};
 use wgpu::{BindGroup, BufferSlice, IndexFormat, RenderPass, RenderPipeline};
 
 pub struct RenderCommand<'a> {
     builtin_uniform_bind_group: Option<u32>,
-    pipeline: RefMut<'a, Option<RenderPipeline>>,
+    pipeline: Arc<RenderPipeline>,
     bind_groups: RefMut<'a, Vec<Option<BindGroup>>>,
-    vertex_buffer_slice: BufferSlice<'a>,
-    // TODO: optimize this; allocating a small buffer per frame is not efficient
     instance_buffer: BufferSlicer,
+    vertex_buffer_slice: BufferSlice<'a>,
     index_buffer_slice: BufferSlice<'a>,
     index_format: IndexFormat,
-    count: u32,
+    index_range: (u32, u32),
 }
 
 impl<'a> RenderCommand<'a> {
     pub fn new(
         builtin_uniform_bind_group: Option<u32>,
-        pipeline: RefMut<'a, Option<RenderPipeline>>,
+        pipeline: Arc<RenderPipeline>,
         bind_groups: RefMut<'a, Vec<Option<BindGroup>>>,
-        vertex_buffer_slice: BufferSlice<'a>,
         instance_buffer: BufferSlicer,
+        vertex_buffer_slice: BufferSlice<'a>,
         index_buffer_slice: BufferSlice<'a>,
         index_format: IndexFormat,
-        count: u32,
+        index_range: (u32, u32),
     ) -> Self {
         Self {
             builtin_uniform_bind_group,
@@ -33,7 +32,7 @@ impl<'a> RenderCommand<'a> {
             instance_buffer,
             index_buffer_slice,
             index_format,
-            count,
+            index_range,
         }
     }
 
@@ -44,7 +43,7 @@ impl<'a> RenderCommand<'a> {
     ) where
         'a: 'pass,
     {
-        render_pass.set_pipeline(self.pipeline.as_ref().unwrap());
+        render_pass.set_pipeline(&self.pipeline);
 
         if let Some(builtin_uniform_bind_group) = self.builtin_uniform_bind_group {
             render_pass.set_bind_group(builtin_uniform_bind_group, builtin_bind_group, &[]);
@@ -67,6 +66,6 @@ impl<'a> RenderCommand<'a> {
         render_pass.set_vertex_buffer(1, self.vertex_buffer_slice);
         render_pass.set_index_buffer(self.index_buffer_slice, self.index_format);
 
-        render_pass.draw_indexed(0..self.count, 0, 0..1);
+        render_pass.draw_indexed(self.index_range.0..self.index_range.1, 0, 0..1);
     }
 }

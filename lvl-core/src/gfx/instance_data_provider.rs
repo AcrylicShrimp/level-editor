@@ -7,8 +7,8 @@ use zerocopy::AsBytes;
 pub struct InstanceDataProvider;
 
 impl InstanceDataProvider {
-    pub fn instance_data_size(&self) -> u32 {
-        size_of::<[[f32; 4]; 4]>() as u32
+    pub fn instance_data_size(&self) -> u64 {
+        size_of::<[[f32; 4]; 4]>() as u64
     }
 
     pub fn instance_data_attributes(&self) -> &'static [VertexAttribute] {

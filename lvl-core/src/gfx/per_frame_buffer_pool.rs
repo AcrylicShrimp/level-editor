@@ -81,6 +81,7 @@ impl SingleBuffer {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct BufferSlicer {
     buffer: Arc<Buffer>,
     offset: u64,

@@ -1,27 +1,22 @@
-use crate::object::{make_camera_object, make_light_object, make_model_object};
+use crate::object::{make_camera_object, make_light_object, make_pmx_model_renderer};
 use lvl_core::{
     context::{driver::Driver, Context},
     resource::load_resource_file,
     scene::{components::LightKind, ObjectId, Scene, Transform},
 };
 use lvl_math::{Quat, Vec3, Vec4};
-use lvl_resource::ResourceFile;
 use winit::{
     keyboard::{KeyCode, PhysicalKey},
     window::Window,
 };
 
 pub struct DriverImpl {
-    resource: Option<ResourceFile>,
     camera_id: Option<ObjectId>,
 }
 
 impl DriverImpl {
     pub fn new() -> Self {
-        Self {
-            resource: None,
-            camera_id: None,
-        }
+        Self { camera_id: None }
     }
 }
 
@@ -53,10 +48,10 @@ impl Driver for DriverImpl {
             .input_mut()
             .register_key("Right", PhysicalKey::Code(KeyCode::ArrowRight));
 
-        {
+        let resource = {
             let bytes = std::fs::read("./assets/resources.res").unwrap();
-            self.resource = Some(load_resource_file(&bytes).unwrap());
-        }
+            load_resource_file(&bytes).unwrap()
+        };
 
         scene.with_proxy(|scene| {
             let camera_id = make_camera_object(
@@ -79,7 +74,7 @@ impl Driver for DriverImpl {
                 ),
             );
 
-            make_model_object(self.resource.as_ref().unwrap(), "モナ・Mona", scene);
+            make_pmx_model_renderer(&resource, "モナ・Mona", scene).unwrap();
 
             make_light_object(
                 Vec3::new(10.0, 20.0, 10.0),

@@ -1,13 +1,13 @@
 mod render_command;
-mod render_static_mesh_renderer;
+mod render_pmx_model_renderer;
 
-use self::render_static_mesh_renderer::build_render_command_static_mesh_renderer;
+use self::render_pmx_model_renderer::build_render_command_pmx_model_renderer;
 use super::common::get_all_cameras;
 use crate::{
     context::{driver::Driver, Context},
     gfx::{ClearMode, Frame, InstanceDataProvider, RenderPassTarget},
     scene::{
-        components::{Camera, CameraClearMode, StaticMeshRenderer, StaticMeshRendererGroup},
+        components::{Camera, CameraClearMode, PmxModelRenderer},
         ObjectId, Scene, SceneProxy,
     },
 };
@@ -86,84 +86,33 @@ fn render_pass_stage_opaque(
 
     let mut commands = Vec::new();
 
-    // no-group renderers
-    if let Some(ids) = scene.find_object_ids_by_component_type::<StaticMeshRenderer>() {
-        let mut non_group_renderers = Vec::with_capacity(ids.len());
+    if let Some(ids) = scene.find_object_ids_by_component_type::<PmxModelRenderer>() {
+        let mut renderers_and_distances = Vec::with_capacity(ids.len());
 
         for id in ids {
             let object = scene.find_object_by_id(*id).unwrap();
             let world_pos = scene.transform_matrix(*id).unwrap() * Vec4::new(0.0, 0.0, 0.0, 1.0);
             let diff = Vec3::from_vec4(camera_world_pos - world_pos);
             let distance = diff.len_square();
-            let renderers = object.find_components_by_type::<StaticMeshRenderer>();
+            let renderers = object.find_components_by_type::<PmxModelRenderer>();
 
             for renderer in renderers {
-                if renderer.has_group() {
-                    continue;
-                }
-
-                non_group_renderers.push((distance, *id, renderer));
+                renderers_and_distances.push((distance, *id, renderer));
             }
         }
 
         // closer one comes first
-        non_group_renderers
+        renderers_and_distances
             .sort_unstable_by(|(a, _, _), (b, _, _)| f32::partial_cmp(a, b).unwrap());
 
-        for (_, id, renderer) in non_group_renderers {
+        for (_, id, renderer) in renderers_and_distances {
             let transform_matrix = scene.transform_matrix(id).unwrap();
-
-            if let Some(command) = build_render_command_static_mesh_renderer(
-                ctx.gfx_ctx(),
+            commands.extend(build_render_command_pmx_model_renderer(
                 transform_matrix,
                 renderer,
                 &InstanceDataProvider,
-            ) {
-                commands.push(command);
-            }
-        }
-    }
-
-    // render group-renderers
-    if let Some(ids) = scene.find_object_ids_by_component_type::<StaticMeshRendererGroup>() {
-        let mut groups = Vec::with_capacity(ids.len());
-
-        for id in ids {
-            let mut group = Vec::with_capacity(32);
-
-            if let Some(children) = scene.object_and_children(*id) {
-                for child in children {
-                    let object = scene.find_object_by_id(*child).unwrap();
-                    let renderers = object.find_components_by_type::<StaticMeshRenderer>();
-
-                    for renderer in renderers {
-                        if !renderer.has_group() {
-                            continue;
-                        }
-
-                        group.push((*child, renderer))
-                    }
-                }
-            }
-
-            group
-                .sort_by_cached_key(|(_, renderer)| renderer.material().render_state().group_order);
-            groups.push(group);
-        }
-
-        for group in groups {
-            for (id, renderer) in group {
-                let transform_matrix = scene.transform_matrix(id).unwrap();
-
-                if let Some(command) = build_render_command_static_mesh_renderer(
-                    ctx.gfx_ctx(),
-                    transform_matrix,
-                    renderer,
-                    &InstanceDataProvider,
-                ) {
-                    commands.push(command);
-                }
-            }
+                ctx.gfx_ctx(),
+            ));
         }
     }
 

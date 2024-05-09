@@ -79,6 +79,10 @@ impl PmxModel {
         &self.elements
     }
 
+    pub fn elements_mut(&mut self) -> &mut [PmxModelElement] {
+        &mut self.elements
+    }
+
     pub fn vertex_layout(&self) -> &PmxModelVertexLayout {
         &self.vertex_layout
     }
