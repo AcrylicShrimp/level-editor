@@ -131,7 +131,7 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
 
   // ambient term
   var color = uniforms.ambient_color;
-  let alpha = uniforms.diffuse_color.a;
+  var alpha = uniforms.diffuse_color.a;
 
   // diffuse term
   let diffuse_color = uniforms.diffuse_color.rgb * uniforms.light_color;
@@ -141,6 +141,7 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
   // texture term
   let tex_color = textureSample(texture, texture_sampler, in.uv);
   color *= tex_color.rgb * uniforms.texture_tint_color.rgb;
+  alpha *= tex_color.a;
 
   // env term
   if (uniforms.env_blend_mode != 0) {
