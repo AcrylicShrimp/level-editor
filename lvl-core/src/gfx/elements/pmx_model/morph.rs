@@ -129,7 +129,7 @@ impl Morph {
                             .remove(&(morph_index as u32));
                     } else {
                         self.group_coefficients[element.morph_index as usize]
-                            .insert(morph_index as u32, element.coefficient);
+                            .insert(morph_index as u32, element.coefficient * coefficient);
                     }
 
                     match &self.kinds[element.morph_index as usize] {
