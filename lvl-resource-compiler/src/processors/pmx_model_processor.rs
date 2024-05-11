@@ -413,7 +413,7 @@ fn make_morph_data(pmx_name: &str, vertex_count: u32, pmx_morphs: &[PmxMorph]) -
                     vertex_displacements.push(Vec3::new(
                         vertex.translation.x,
                         vertex.translation.y,
-                        vertex.translation.z,
+                        -vertex.translation.z,
                     ));
                 }
 
