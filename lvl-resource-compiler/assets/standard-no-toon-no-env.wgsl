@@ -4,6 +4,7 @@ struct Uniform {
   specular_color: vec3<f32>,
   specular_strength: f32,
   ambient_color: vec3<f32>,
+  texture_tint_color: vec4<f32>,
   light_color: vec3<f32>,
   light_direction: vec3<f32>,
 };
@@ -16,9 +17,6 @@ struct Uniform {
 @group(1) @binding(3) var uv_morph_index_texture: texture_2d<u32>;
 @group(1) @binding(4) var vertex_displacement_texture: texture_2d<f32>;
 @group(1) @binding(5) var uv_displacement_texture: texture_2d<f32>;
-
-@group(1) @binding(6) var toon_texture: texture_2d<f32>;
-@group(1) @binding(7) var toon_texture_sampler: sampler;
 
 struct VertexInput {
   @location(0) position: vec3<f32>,
@@ -127,11 +125,7 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
 
   // texture term
   let tex_color = textureSample(texture, texture_sampler, in.uv);
-  color *= tex_color.rgb;
-
-  // toon term
-  let toon_color = textureSample(toon_texture, toon_texture_sampler, vec2<f32>(0.5, 1.0 - ln)).rgb;
-  color *= toon_color;
+  color *= tex_color.rgb * uniforms.texture_tint_color.rgb;
 
   // specular term
   var specular_color = vec3<f32>(0.0);

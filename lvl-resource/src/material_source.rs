@@ -57,7 +57,6 @@ pub struct MaterialRenderState {
     pub vertex_color: bool,
     pub point_drawing: bool,
     pub line_drawing: bool,
-    pub group_order: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -47,7 +47,19 @@ impl Processor for PmxModelProcessor {
         let content = std::fs::read(file)?;
         let pmx = Pmx::parse(&content)?;
 
-        let shader_name = format!("{}/shader:{}", pmx.header.model_name_local, "standard");
+        let full_shader_name = format!("{}/shader:{}", pmx.header.model_name_local, "standard");
+        let no_toon_shader_name = format!(
+            "{}/shader:{}",
+            pmx.header.model_name_local, "standard-no-toon"
+        );
+        let no_env_shader_name = format!(
+            "{}/shader:{}",
+            pmx.header.model_name_local, "standard-no-env"
+        );
+        let no_toon_no_env_shader_name = format!(
+            "{}/shader:{}",
+            pmx.header.model_name_local, "standard-no-toon-no-env"
+        );
 
         let pmx_material_namer = |pmx_material: &PmxMaterial| -> String {
             format!(
@@ -55,7 +67,15 @@ impl Processor for PmxModelProcessor {
                 pmx.header.model_name_local, pmx_material.name_local
             )
         };
-        let pmx_shader_namer = |_pmx_material: &PmxMaterial| -> String { shader_name.clone() };
+        let pmx_shader_namer =
+            |_pmx_material: &PmxMaterial, toon_enabled: bool, env_enabled: bool| -> String {
+                match (toon_enabled, env_enabled) {
+                    (true, true) => full_shader_name.clone(),
+                    (true, false) => no_env_shader_name.clone(),
+                    (false, true) => no_toon_shader_name.clone(),
+                    (false, false) => no_toon_no_env_shader_name.clone(),
+                }
+            };
         let pmx_texture_namer = |pmx_texture: &PmxTexture| -> String {
             format!(
                 "{}/texture:{}",
@@ -181,22 +201,54 @@ impl Processor for PmxModelProcessor {
             textures.push(resource);
         }
 
-        let shader_content = include_str!("../../assets/standard.wgsl");
-        let shader_source = ShaderProcessor::generate_shader_resource_from_wsgl_content(
-            &shader_name,
-            shader_content.to_owned(),
+        let full_shader_content = include_str!("../../assets/standard-full.wgsl");
+        let full_shader_source = ShaderProcessor::generate_shader_resource_from_wsgl_content(
+            &full_shader_name,
+            full_shader_content.to_owned(),
             &BTreeSet::from_iter(vec![
                 "vertex_displacement_texture".to_owned(),
                 "uv_displacement_texture".to_owned(),
             ]),
         );
 
-        let mut resources = Vec::with_capacity(1 + pmx.materials.len() + pmx.textures.len());
+        let no_toon_shader_content = include_str!("../../assets/standard-no-toon.wgsl");
+        let no_toon_shader_source = ShaderProcessor::generate_shader_resource_from_wsgl_content(
+            &no_toon_shader_name,
+            no_toon_shader_content.to_owned(),
+            &BTreeSet::from_iter(vec![
+                "vertex_displacement_texture".to_owned(),
+                "uv_displacement_texture".to_owned(),
+            ]),
+        );
 
-        match shader_source {
+        let no_env_shader_content = include_str!("../../assets/standard-no-env.wgsl");
+        let no_env_shader_source = ShaderProcessor::generate_shader_resource_from_wsgl_content(
+            &no_env_shader_name,
+            no_env_shader_content.to_owned(),
+            &BTreeSet::from_iter(vec![
+                "vertex_displacement_texture".to_owned(),
+                "uv_displacement_texture".to_owned(),
+            ]),
+        );
+
+        let no_toon_no_env_shader_content =
+            include_str!("../../assets/standard-no-toon-no-env.wgsl");
+        let no_toon_no_env_shader_source =
+            ShaderProcessor::generate_shader_resource_from_wsgl_content(
+                &no_toon_no_env_shader_name,
+                no_toon_no_env_shader_content.to_owned(),
+                &BTreeSet::from_iter(vec![
+                    "vertex_displacement_texture".to_owned(),
+                    "uv_displacement_texture".to_owned(),
+                ]),
+            );
+
+        let mut resources = Vec::with_capacity(2 + pmx.materials.len() + pmx.textures.len());
+
+        match full_shader_source {
             Ok(source) => {
                 let resource = Resource {
-                    name: shader_name,
+                    name: full_shader_name,
                     kind: ResourceKind::Shader(source),
                 };
                 resources.push(resource);
@@ -204,7 +256,55 @@ impl Processor for PmxModelProcessor {
             Err(err) => {
                 error!(
                     "failed to process shader `{}`; it will be ignored: {}",
-                    shader_name, err
+                    full_shader_name, err
+                );
+            }
+        }
+
+        match no_toon_shader_source {
+            Ok(source) => {
+                let resource = Resource {
+                    name: no_toon_shader_name,
+                    kind: ResourceKind::Shader(source),
+                };
+                resources.push(resource);
+            }
+            Err(err) => {
+                error!(
+                    "failed to process shader `{}`; it will be ignored: {}",
+                    no_toon_shader_name, err
+                );
+            }
+        }
+
+        match no_env_shader_source {
+            Ok(source) => {
+                let resource = Resource {
+                    name: no_env_shader_name,
+                    kind: ResourceKind::Shader(source),
+                };
+                resources.push(resource);
+            }
+            Err(err) => {
+                error!(
+                    "failed to process shader `{}`; it will be ignored: {}",
+                    no_env_shader_name, err
+                );
+            }
+        }
+
+        match no_toon_no_env_shader_source {
+            Ok(source) => {
+                let resource = Resource {
+                    name: no_toon_no_env_shader_name,
+                    kind: ResourceKind::Shader(source),
+                };
+                resources.push(resource);
+            }
+            Err(err) => {
+                error!(
+                    "failed to process shader `{}`; it will be ignored: {}",
+                    no_toon_no_env_shader_name, err
                 );
             }
         }
@@ -1072,7 +1172,7 @@ fn make_index_data(
 }
 
 fn make_material_source(
-    mut pmx_shader_namer: impl FnMut(&PmxMaterial) -> String,
+    mut pmx_shader_namer: impl FnMut(&PmxMaterial, bool, bool) -> String,
     mut pmx_texture_namer: impl FnMut(&PmxTexture) -> String,
     mut pmx_internal_toon_texture_namer: impl FnMut(u8) -> String,
     render_type: MaterialRenderType,
@@ -1083,6 +1183,9 @@ fn make_material_source(
     vertex_displacement_texture_name: &str,
     uv_displacement_texture_name: &str,
 ) -> MaterialSource {
+    let toon_enabled;
+    let env_enabled;
+
     let mut properties = vec![];
 
     properties.push(MaterialProperty {
@@ -1159,6 +1262,8 @@ fn make_material_source(
         }
     };
 
+    toon_enabled = toon_texture_name.is_some();
+
     if let Some(toon_texture_name) = toon_texture_name {
         properties.push(MaterialProperty {
             name: "toon_texture".to_owned(),
@@ -1186,8 +1291,9 @@ fn make_material_source(
     }
 
     let env_texture_index = pmx_material.environment_texture_index.get();
+    env_enabled = 0 <= env_texture_index && (env_texture_index as usize) < pmx_textures.len();
 
-    if 0 <= env_texture_index && (env_texture_index as usize) < pmx_textures.len() {
+    if env_enabled {
         let pmx_texture = &pmx_textures[env_texture_index as usize];
 
         properties.push(MaterialProperty {
@@ -1277,7 +1383,7 @@ fn make_material_source(
         value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ONE)),
     });
     properties.push(MaterialProperty {
-        name: "environment_tint_color".to_owned(),
+        name: "env_tint_color".to_owned(),
         value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ONE)),
     });
     properties.push(MaterialProperty {
@@ -1286,7 +1392,7 @@ fn make_material_source(
     });
 
     MaterialSource::new(
-        pmx_shader_namer(pmx_material),
+        pmx_shader_namer(pmx_material, toon_enabled, env_enabled),
         MaterialRenderState {
             render_type,
             no_cull_back_face: pmx_material.flags.no_cull_back_face,
@@ -1297,7 +1403,6 @@ fn make_material_source(
             vertex_color: pmx_material.flags.vertex_color,
             point_drawing: pmx_material.flags.point_drawing,
             line_drawing: pmx_material.flags.line_drawing,
-            group_order: 0,
         },
         properties,
     )

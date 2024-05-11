@@ -1,6 +1,5 @@
 use crate::processors::{
-    process_single_file, ModelProcessor, PmxModelProcessor, Processor, ShaderProcessor,
-    TextureProcessor,
+    process_single_file, PmxModelProcessor, Processor, ShaderProcessor, TextureProcessor,
 };
 use anyhow::{anyhow, Context, Error as AnyError};
 use log::{debug, error, info, warn};

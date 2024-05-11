@@ -308,7 +308,7 @@ impl MaterialValue {
                 })
                 .unwrap_or_default(),
             environment_tint_color: material
-                .get_property("environment_tint_color")
+                .get_property("env_tint_color")
                 .and_then(|property| property.value())
                 .and_then(|value| match value {
                     MaterialPropertyValue::Vec4(value) => Some(*value),
@@ -350,7 +350,7 @@ impl MaterialValue {
             MaterialPropertyValue::Vec4(self.texture_tint_color),
         );
         material.set_property(
-            "environment_tint_color",
+            "env_tint_color",
             MaterialPropertyValue::Vec4(self.environment_tint_color),
         );
         material.set_property(
