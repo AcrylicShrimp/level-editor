@@ -98,6 +98,7 @@ fn make_texture_element(
             return Err(anyhow!("RGBA32Float format is not supported"));
         }
         TextureElementTextureFormat::RGBA8Unorm => decoded.into_rgba8().to_vec(),
+        TextureElementTextureFormat::RGBA8UnormSrgb => decoded.into_rgba8().to_vec(),
     };
 
     Ok(TextureElement {

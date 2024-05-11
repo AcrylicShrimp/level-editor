@@ -38,8 +38,9 @@ struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) world_position: vec3<f32>,
   @location(1) normal: vec3<f32>,
-  @location(2) uv: vec2<f32>,
-  @location(3) additional_uv: vec2<f32>,
+  @location(2) view_normal: vec3<f32>,
+  @location(3) uv: vec2<f32>,
+  @location(4) additional_uv: vec2<f32>,
 };
 
 struct FragmentOutput {
@@ -104,12 +105,15 @@ fn vs_main(instance: InstanceInput, vertex: VertexInput) -> VertexOutput {
   }
 
   let world_pos = builtin_transform_vertex_to_world_space(instance, vec4<f32>(position, 1.0));
-  let clip_pos = builtin_transform_to_clip_space(world_pos);
+  let clip_pos = builtin_transform_vertex_to_clip_space(world_pos);
+  let normal = builtin_transform_normal_to_world_space(instance, vertex.normal);
+  let view_normal = builtin_transform_normal_to_view_space(normal);
 
   var out: VertexOutput;
   out.position = clip_pos;
   out.world_position = world_pos.xyz;
-  out.normal = builtin_transform_normal_to_world_space(instance, vertex.normal);
+  out.normal = normal;
+  out.view_normal = view_normal;
   out.uv = uv;
   out.additional_uv = additional_uv.xy;
   return out;
@@ -120,6 +124,7 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
   let eye_dir = normalize(builtin_uniform.camera_position - in.world_position);
   let light_dir = normalize(-uniforms.light_direction);
   let normal = normalize(in.normal);
+  let view_normal = normalize(in.view_normal);
 
   // half lambert
   var ln = dot(normal, light_dir);
@@ -146,7 +151,7 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
     if uniforms.env_blend_mode == 3 {
       env_uv = in.additional_uv;
     } else {
-      env_uv = vec2<f32>(normal.x * 0.5 + 0.5, normal.y * 0.5 + 0.5);
+      env_uv = vec2<f32>(view_normal.x * 0.5 + 0.5, view_normal.y * 0.5 + 0.5);
     }
 
     let env_color = textureSample(env_texture, env_texture_sampler, env_uv);

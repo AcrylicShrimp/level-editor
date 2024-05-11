@@ -878,7 +878,7 @@ fn make_vertex_data(
         // position
         write!(write, pmx_vertex.position.x);
         write!(write, pmx_vertex.position.y);
-        write!(write, pmx_vertex.position.z);
+        write!(write, -pmx_vertex.position.z);
 
         // normal
         write!(write, pmx_vertex.normal.x);
@@ -1425,7 +1425,7 @@ fn make_texture_source(
     TextureProcessor::generate_texture_source(
         &parent_path.join(&pmx_texture.path),
         &TextureMetadata {
-            texture_format: TextureElementTextureFormat::RGBA8Unorm,
+            texture_format: TextureElementTextureFormat::RGBA8UnormSrgb,
             sampling_mode: Some(TextureElementSamplingMode::Bilinear),
             wrapping_mode_u: Some(TextureElementWrappingMode::Clamp),
             wrapping_mode_v: Some(TextureElementWrappingMode::Clamp),
@@ -1450,7 +1450,7 @@ fn make_internal_toon_texture_source(
     TextureProcessor::generate_texture_source(
         &parent_path.join(&format!("toon{:0>2}.bmp", index)),
         &TextureMetadata {
-            texture_format: TextureElementTextureFormat::RGBA8Unorm,
+            texture_format: TextureElementTextureFormat::RGBA8UnormSrgb,
             sampling_mode: Some(TextureElementSamplingMode::Bilinear),
             wrapping_mode_u: Some(TextureElementWrappingMode::Clamp),
             wrapping_mode_v: Some(TextureElementWrappingMode::Clamp),

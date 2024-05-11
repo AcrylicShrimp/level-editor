@@ -35,7 +35,7 @@ pub fn build_render_command_pmx_model_renderer<'r>(
 
     let mut commands = Vec::with_capacity(model.elements().len());
 
-    for (index, element) in model.elements().iter().enumerate() {
+for (index, element) in model.elements().iter().enumerate() {
         let material = &element.material;
         let diffuse_color = material
             .get_property("diffuse_color")

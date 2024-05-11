@@ -504,6 +504,7 @@ impl MaterialPropertyKind {
                         | MaterialPropertyValue::Vec2(_)
                         | MaterialPropertyValue::Vec3(_)
                         | MaterialPropertyValue::Vec4(_)
+                        | MaterialPropertyValue::U32(_)
                 )
             }
             Self::StorageBuffer { size, .. } => match value {

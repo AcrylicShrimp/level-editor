@@ -60,6 +60,7 @@ pub enum TextureElementTextureFormat {
     RGBA32Uint,
     RGBA32Float,
     RGBA8Unorm,
+    RGBA8UnormSrgb,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

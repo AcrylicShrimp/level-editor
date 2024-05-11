@@ -130,7 +130,7 @@ impl PmxModelRenderer {
                     PrimitiveTopology::TriangleList
                 },
                 strip_index_format: None,
-                front_face: FrontFace::Ccw,
+                front_face: FrontFace::Cw,
                 cull_mode: if material.render_state().no_cull_back_face {
                     None
                 } else {

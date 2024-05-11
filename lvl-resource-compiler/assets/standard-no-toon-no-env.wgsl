@@ -94,12 +94,13 @@ fn vs_main(instance: InstanceInput, vertex: VertexInput) -> VertexOutput {
   }
 
   let world_pos = builtin_transform_vertex_to_world_space(instance, vec4<f32>(position, 1.0));
-  let clip_pos = builtin_transform_to_clip_space(world_pos);
+  let clip_pos = builtin_transform_vertex_to_clip_space(world_pos);
+  let normal = builtin_transform_normal_to_world_space(instance, vertex.normal);
 
   var out: VertexOutput;
   out.position = clip_pos;
   out.world_position = world_pos.xyz;
-  out.normal = builtin_transform_normal_to_world_space(instance, vertex.normal);
+  out.normal = normal;
   out.uv = uv;
   return out;
 }

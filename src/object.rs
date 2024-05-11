@@ -10,7 +10,12 @@ use lvl_core::{
 use lvl_math::{Vec3, Vec4};
 use lvl_resource::{PmxModelSource, ResourceFile};
 
-pub fn make_camera_object(order: i64, clear_color: Vec4, scene: &mut SceneProxy) -> ObjectId {
+pub fn make_camera_object(
+    order: i64,
+    fov: f32,
+    clear_color: Vec4,
+    scene: &mut SceneProxy,
+) -> ObjectId {
     let id = scene.create_object();
 
     scene.add_component(
@@ -19,7 +24,7 @@ pub fn make_camera_object(order: i64, clear_color: Vec4, scene: &mut SceneProxy)
             order,
             clear_mode: CameraClearMode::All { color: clear_color },
             projection_mode: CameraProjectionMode::Perspective {
-                fov: (60.0f32).to_radians(),
+                fov: fov.to_radians(),
                 near: 0.1,
                 far: 100.0,
             },
@@ -48,7 +53,7 @@ pub fn make_pmx_model_renderer(
         );
         element.material.set_property(
             "light_direction",
-            MaterialPropertyValue::Vec3(Vec3::new(0.2, -1.0, 0.2).normalized()),
+            MaterialPropertyValue::Vec3(Vec3::new(1.0, -1.0, 1.0).normalized()),
         );
     }
 

@@ -60,6 +60,7 @@ pub fn render(
                 .update_camera_matrix(
                     &camera_projection_matrix,
                     camera_world_pos,
+                    camera_transform_matrix,
                     &ctx.gfx_ctx().queue,
                 );
 

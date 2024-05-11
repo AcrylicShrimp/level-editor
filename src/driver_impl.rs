@@ -67,6 +67,7 @@ impl Driver for DriverImpl {
         scene.with_proxy(|scene| {
             let camera_id = make_camera_object(
                 0,
+                30.0,
                 Vec4 {
                     x: 0.05,
                     y: 0.05,
@@ -80,13 +81,14 @@ impl Driver for DriverImpl {
             scene.set_transform(
                 camera_id,
                 Transform::look_at(
-                    Vec3::new(0.0, 15.0, -7.0),
+                    Vec3::new(0.0, 15.0, 7.0),
                     Vec3::new(0.0, 15.0, 0.0),
                     Vec3::new(0.0, 1.0, 0.0),
                 ),
             );
 
-            let pmx_model_id = make_pmx_model_renderer(&resource, "モナ・Mona", scene).unwrap();
+            let pmx_model_id =
+                make_pmx_model_renderer(&resource, "YYB Hatsune Miku_NT_1.0ver", scene).unwrap();
             self.pmx_model_id = Some(pmx_model_id);
 
             let pmx_model_object = scene

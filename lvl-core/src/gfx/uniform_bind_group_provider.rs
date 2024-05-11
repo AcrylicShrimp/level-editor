@@ -8,7 +8,7 @@ use wgpu::{
 use zerocopy::AsBytes;
 
 const BUFFER_SIZE: NonZeroU64 =
-    unsafe { NonZeroU64::new_unchecked(size_of::<[[f32; 4]; 5]>() as u64) };
+    unsafe { NonZeroU64::new_unchecked(size_of::<[[f32; 4]; 9]>() as u64) };
 
 pub struct UniformBindGroupProvider {
     buffer: Buffer,
@@ -34,7 +34,7 @@ impl UniformBindGroupProvider {
 
         let buffer = device.create_buffer(&BufferDescriptor {
             label: None,
-            size: size_of::<[[f32; 4]; 5]>() as u64,
+            size: BUFFER_SIZE.get(),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -67,11 +67,18 @@ impl UniformBindGroupProvider {
         &self.bind_group_layout
     }
 
-    pub fn update_camera_matrix(&self, matrix: &Mat4, world_position: Vec3, queue: &Queue) {
+    pub fn update_camera_matrix(
+        &self,
+        clip_matrix: &Mat4,
+        world_position: Vec3,
+        view_matrix: &Mat4,
+        queue: &Queue,
+    ) {
         if let Some(mut view) = queue.write_buffer_with(&self.buffer, 0, BUFFER_SIZE) {
-            view[..size_of::<[[f32; 4]; 4]>()].copy_from_slice(matrix.as_bytes());
+            view[..size_of::<[[f32; 4]; 4]>()].copy_from_slice(clip_matrix.as_bytes());
             view[size_of::<[[f32; 4]; 4]>()..size_of::<[[f32; 4]; 5]>() - size_of::<f32>()]
                 .copy_from_slice(world_position.as_bytes());
+            view[size_of::<[[f32; 4]; 5]>()..].copy_from_slice(view_matrix.as_bytes());
         }
     }
 }
