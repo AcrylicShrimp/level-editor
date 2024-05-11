@@ -250,9 +250,12 @@ pub struct MaterialValue {
     pub ambient_color: Vec3,
     pub edge_color: Vec4,
     pub edge_size: f32,
-    pub texture_tint_color: Vec4,
-    pub environment_tint_color: Vec4,
-    pub toon_tint_color: Vec4,
+    pub texture_tint_color_mul: Vec4,
+    pub texture_tint_color_add: Vec4,
+    pub environment_tint_color_mul: Vec4,
+    pub environment_tint_color_add: Vec4,
+    pub toon_tint_color_mul: Vec4,
+    pub toon_tint_color_add: Vec4,
 }
 
 impl MaterialValue {
@@ -306,30 +309,12 @@ impl MaterialValue {
                     _ => None,
                 })
                 .unwrap_or_default(),
-            texture_tint_color: material
-                .get_property("texture_tint_color")
-                .and_then(|property| property.value())
-                .and_then(|value| match value {
-                    MaterialPropertyValue::Vec4(value) => Some(*value),
-                    _ => None,
-                })
-                .unwrap_or_default(),
-            environment_tint_color: material
-                .get_property("env_tint_color")
-                .and_then(|property| property.value())
-                .and_then(|value| match value {
-                    MaterialPropertyValue::Vec4(value) => Some(*value),
-                    _ => None,
-                })
-                .unwrap_or_default(),
-            toon_tint_color: material
-                .get_property("toon_tint_color")
-                .and_then(|property| property.value())
-                .and_then(|value| match value {
-                    MaterialPropertyValue::Vec4(value) => Some(*value),
-                    _ => None,
-                })
-                .unwrap_or_default(),
+            texture_tint_color_mul: Vec4::ONE,
+            texture_tint_color_add: Vec4::ZERO,
+            environment_tint_color_mul: Vec4::ONE,
+            environment_tint_color_add: Vec4::ZERO,
+            toon_tint_color_mul: Vec4::ONE,
+            toon_tint_color_add: Vec4::ZERO,
         }
     }
 
@@ -353,16 +338,28 @@ impl MaterialValue {
         material.set_property("edge_color", MaterialPropertyValue::Vec4(self.edge_color));
         material.set_property("edge_size", MaterialPropertyValue::Float(self.edge_size));
         material.set_property(
-            "texture_tint_color",
-            MaterialPropertyValue::Vec4(self.texture_tint_color),
+            "texture_tint_color_mul ",
+            MaterialPropertyValue::Vec4(self.texture_tint_color_mul),
         );
         material.set_property(
-            "env_tint_color",
-            MaterialPropertyValue::Vec4(self.environment_tint_color),
+            "texture_tint_color_add",
+            MaterialPropertyValue::Vec4(self.texture_tint_color_add),
         );
         material.set_property(
-            "toon_tint_color",
-            MaterialPropertyValue::Vec4(self.toon_tint_color),
+            "env_tint_color_mul",
+            MaterialPropertyValue::Vec4(self.environment_tint_color_mul),
+        );
+        material.set_property(
+            "env_tint_color_add",
+            MaterialPropertyValue::Vec4(self.environment_tint_color_add),
+        );
+        material.set_property(
+            "toon_tint_color_mul",
+            MaterialPropertyValue::Vec4(self.toon_tint_color_mul),
+        );
+        material.set_property(
+            "toon_tint_color_add",
+            MaterialPropertyValue::Vec4(self.toon_tint_color_add),
         );
     }
 }
@@ -459,32 +456,32 @@ impl MaterialOffset {
                 );
                 value.edge_size =
                     lerp_unclamped_f32(value.edge_size, value.edge_size * self.edge_size, weight);
-                value.texture_tint_color = Vec4::lerp_unclamped(
-                    value.texture_tint_color,
-                    value.texture_tint_color * self.texture_tint_color,
+                value.texture_tint_color_mul = Vec4::lerp_unclamped(
+                    value.texture_tint_color_mul,
+                    value.texture_tint_color_mul * self.texture_tint_color,
                     weight,
                 );
-                value.environment_tint_color = Vec4::lerp_unclamped(
-                    value.environment_tint_color,
-                    value.environment_tint_color * self.environment_tint_color,
+                value.environment_tint_color_mul = Vec4::lerp_unclamped(
+                    value.environment_tint_color_mul,
+                    value.environment_tint_color_mul * self.environment_tint_color,
                     weight,
                 );
-                value.toon_tint_color = Vec4::lerp_unclamped(
-                    value.toon_tint_color,
-                    value.toon_tint_color * self.toon_tint_color,
+                value.toon_tint_color_mul = Vec4::lerp_unclamped(
+                    value.toon_tint_color_mul,
+                    value.toon_tint_color_mul * self.toon_tint_color,
                     weight,
                 );
             }
             PmxModelMorphMaterialOffsetMode::Additive => {
-                value.diffuse_color += self.diffuse_color;
-                value.specular_color += self.specular_color;
-                value.specular_strength += self.specular_strength;
-                value.ambient_color += self.ambient_color;
-                value.edge_color += self.edge_color;
-                value.edge_size += self.edge_size;
-                value.texture_tint_color += self.texture_tint_color;
-                value.environment_tint_color += self.environment_tint_color;
-                value.toon_tint_color += self.toon_tint_color;
+                value.diffuse_color += self.diffuse_color * weight;
+                value.specular_color += self.specular_color * weight;
+                value.specular_strength += self.specular_strength * weight;
+                value.ambient_color += self.ambient_color * weight;
+                value.edge_color += self.edge_color * weight;
+                value.edge_size += self.edge_size * weight;
+                value.texture_tint_color_add += self.texture_tint_color * weight;
+                value.environment_tint_color_add += self.environment_tint_color * weight;
+                value.toon_tint_color_add += self.toon_tint_color * weight;
             }
         }
     }

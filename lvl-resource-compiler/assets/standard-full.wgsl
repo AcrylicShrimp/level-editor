@@ -5,9 +5,12 @@ struct Uniform {
   specular_strength: f32,
   ambient_color: vec3<f32>,
   env_blend_mode: u32,
-  texture_tint_color: vec4<f32>,
-  env_tint_color: vec4<f32>,
-  toon_tint_color: vec4<f32>,
+  texture_tint_color_mul: vec4<f32>,
+  texture_tint_color_add: vec4<f32>,
+  env_tint_color_mul: vec4<f32>,
+  env_tint_color_add: vec4<f32>,
+  toon_tint_color_mul: vec4<f32>,
+  toon_tint_color_add: vec4<f32>,
   light_color: vec3<f32>,
   light_direction: vec3<f32>,
 };
@@ -145,7 +148,9 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
 
   // texture term
   let tex_color = textureSample(texture, texture_sampler, in.uv);
-  color *= tex_color.rgb * uniforms.texture_tint_color.rgb;
+  var tinted_tex_color = apply_tint_mul(tex_color.rgb, uniforms.texture_tint_color_mul);
+  tinted_tex_color = apply_tint_add(tinted_tex_color, uniforms.texture_tint_color_add);
+  color *= tinted_tex_color;
   alpha *= tex_color.a;
 
   // env term
@@ -158,19 +163,22 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
       env_uv = vec2<f32>(view_normal.x * 0.5 + 0.5, view_normal.y * 0.5 + 0.5);
     }
 
-    let env_color = textureSample(env_texture, env_texture_sampler, env_uv);
-    let env = env_color.rgb * uniforms.env_tint_color.rgb;
+    var env_color = textureSample(env_texture, env_texture_sampler, env_uv).rgb;
+    env_color = apply_tint_mul(env_color, uniforms.env_tint_color_mul);
+    env_color = apply_tint_add(env_color, uniforms.env_tint_color_add);
 
     if (uniforms.env_blend_mode == 2) {
-      color += env;
+      color += env_color;
     } else {
-      color *= env;
+      color *= env_color;
     }
   }
 
   // toon term
-  let toon_color = textureSample(toon_texture, toon_texture_sampler, vec2<f32>(0.5, 1.0 - ln)).rgb;
-  color *= toon_color * uniforms.toon_tint_color.rgb;
+  var toon_color = textureSample(toon_texture, toon_texture_sampler, vec2<f32>(0.5, 1.0 - ln)).rgb;
+  toon_color = apply_tint_mul(toon_color, uniforms.toon_tint_color_mul);
+  toon_color = apply_tint_add(toon_color, uniforms.toon_tint_color_add);
+  color *= toon_color;
 
   // specular term
   var specular_color = vec3<f32>(0.0);
@@ -185,4 +193,14 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
   var out: FragmentOutput;
   out.color = vec4<f32>(color, alpha);
   return out;
+}
+
+fn apply_tint_mul(color: vec3<f32>, factor: vec4<f32>) -> vec3<f32> {
+  let tinted = color * factor.rgb;
+  return mix(vec3<f32>(1.0), tinted, factor.a);
+}
+
+fn apply_tint_add(color: vec3<f32>, factor: vec4<f32>) -> vec3<f32> {
+  let tinted = color + (color - vec3<f32>(1.0)) * factor.a;
+  return clamp(tinted, vec3<f32>(0.0), vec3<f32>(1.0)) + factor.rgb;
 }

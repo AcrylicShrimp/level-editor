@@ -4,7 +4,8 @@ struct Uniform {
   specular_color: vec3<f32>,
   specular_strength: f32,
   ambient_color: vec3<f32>,
-  texture_tint_color: vec4<f32>,
+  texture_tint_color_mul: vec4<f32>,
+  texture_tint_color_add: vec4<f32>,
   light_color: vec3<f32>,
   light_direction: vec3<f32>,
 };
@@ -126,7 +127,9 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
 
   // texture term
   let tex_color = textureSample(texture, texture_sampler, in.uv);
-  color *= tex_color.rgb * uniforms.texture_tint_color.rgb;
+  var tinted_tex_color = apply_tint_mul(tex_color.rgb, uniforms.texture_tint_color_mul);
+  tinted_tex_color = apply_tint_add(tinted_tex_color, uniforms.texture_tint_color_add);
+  color *= tinted_tex_color;
   alpha *= tex_color.a;
 
   // specular term
@@ -142,4 +145,14 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
   var out: FragmentOutput;
   out.color = vec4<f32>(color, alpha);
   return out;
+}
+
+fn apply_tint_mul(color: vec3<f32>, factor: vec4<f32>) -> vec3<f32> {
+  let tinted = color * factor.rgb;
+  return mix(vec3<f32>(1.0), tinted, factor.a);
+}
+
+fn apply_tint_add(color: vec3<f32>, factor: vec4<f32>) -> vec3<f32> {
+  let tinted = color + (color - vec3<f32>(1.0)) * factor.a;
+  return clamp(tinted, vec3<f32>(0.0), vec3<f32>(1.0)) + factor.rgb;
 }

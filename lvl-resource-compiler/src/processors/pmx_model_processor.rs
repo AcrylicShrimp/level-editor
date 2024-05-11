@@ -1379,16 +1379,28 @@ fn make_material_source(
         )),
     });
     properties.push(MaterialProperty {
-        name: "texture_tint_color".to_owned(),
+        name: "texture_tint_color_mul".to_owned(),
         value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ONE)),
     });
     properties.push(MaterialProperty {
-        name: "env_tint_color".to_owned(),
+        name: "texture_tint_color_add".to_owned(),
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ZERO)),
+    });
+    properties.push(MaterialProperty {
+        name: "env_tint_color_mul".to_owned(),
         value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ONE)),
     });
     properties.push(MaterialProperty {
-        name: "toon_tint_color".to_owned(),
+        name: "env_tint_color_add".to_owned(),
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ZERO)),
+    });
+    properties.push(MaterialProperty {
+        name: "toon_tint_color_mul".to_owned(),
         value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ONE)),
+    });
+    properties.push(MaterialProperty {
+        name: "toon_tint_color_add".to_owned(),
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ZERO)),
     });
 
     MaterialSource::new(
