@@ -1272,6 +1272,18 @@ fn make_material_source(
             },
         )),
     });
+    properties.push(MaterialProperty {
+        name: "texture_tint_color".to_owned(),
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ONE)),
+    });
+    properties.push(MaterialProperty {
+        name: "environment_tint_color".to_owned(),
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ONE)),
+    });
+    properties.push(MaterialProperty {
+        name: "toon_tint_color".to_owned(),
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::ONE)),
+    });
 
     MaterialSource::new(
         pmx_shader_namer(pmx_material),
