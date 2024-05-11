@@ -117,13 +117,20 @@ impl Morph {
 
         match &self.kinds[morph_index as usize] {
             PmxModelMorphKind::Group(elements) => {
+                let is_removed = coefficient.abs() <= 0.001;
+
                 for element in elements {
                     if let PmxModelMorphKind::Group(_) = &self.kinds[element.morph_index as usize] {
                         continue;
                     }
 
-                    self.group_coefficients[element.morph_index as usize]
-                        .insert(morph_index as u32, element.coefficient);
+                    if is_removed {
+                        self.group_coefficients[element.morph_index as usize]
+                            .remove(&(morph_index as u32));
+                    } else {
+                        self.group_coefficients[element.morph_index as usize]
+                            .insert(morph_index as u32, element.coefficient);
+                    }
 
                     match &self.kinds[element.morph_index as usize] {
                         PmxModelMorphKind::Material(elements) => {
