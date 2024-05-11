@@ -1,6 +1,11 @@
 
 struct Uniform {
   diffuse_color: vec4<f32>,
+  specular_color: vec3<f32>,
+  specular_strength: f32,
+  ambient_color: vec3<f32>,
+  light_color: vec3<f32>,
+  light_direction: vec3<f32>,
 };
 
 @group(0) @binding(0) var<uniform> uniforms: Uniform;
@@ -11,6 +16,9 @@ struct Uniform {
 @group(1) @binding(3) var uv_morph_index_texture: texture_2d<u32>;
 @group(1) @binding(4) var vertex_displacement_texture: texture_2d<f32>;
 @group(1) @binding(5) var uv_displacement_texture: texture_2d<f32>;
+
+@group(1) @binding(6) var toon_texture: texture_2d<f32>;
+@group(1) @binding(7) var toon_texture_sampler: sampler;
 
 struct VertexInput {
   @location(0) position: vec3<f32>,
@@ -24,8 +32,9 @@ struct VertexInput {
 
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
-  @location(0) normal: vec3<f32>,
-  @location(1) uv: vec2<f32>,
+  @location(0) world_position: vec3<f32>,
+  @location(1) normal: vec3<f32>,
+  @location(2) uv: vec2<f32>,
 };
 
 struct FragmentOutput {
@@ -86,23 +95,55 @@ fn vs_main(instance: InstanceInput, vertex: VertexInput) -> VertexOutput {
     }
   }
 
-  let world_pos = builtin_transform_to_world_space(instance, vec4<f32>(position, 1.0));
+  let world_pos = builtin_transform_vertex_to_world_space(instance, vec4<f32>(position, 1.0));
   let clip_pos = builtin_transform_to_clip_space(world_pos);
 
   var out: VertexOutput;
   out.position = clip_pos;
-  out.normal = vertex.normal;
+  out.world_position = world_pos.xyz;
+  out.normal = builtin_transform_normal_to_world_space(instance, vertex.normal);
   out.uv = uv;
   return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> FragmentOutput {
-  if uniforms.diffuse_color.a <= 0.0 {
-    discard;
-  }
+  let eye_dir = normalize(builtin_uniform.camera_position - in.world_position);
+  let light_dir = normalize(-uniforms.light_direction);
+  let normal = normalize(in.normal);
 
+  // half lambert
+  var ln = dot(normal, light_dir);
+  ln = clamp(ln + 0.5, 0.0, 1.0);
+
+  // ambient term
+  var color = uniforms.ambient_color;
+  let alpha = uniforms.diffuse_color.a;
+
+  // diffuse term
+  let diffuse_color = uniforms.diffuse_color.rgb * uniforms.light_color;
+  color += diffuse_color;
+  color = clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
+
+  // texture term
+  let tex_color = textureSample(texture, texture_sampler, in.uv);
+  color *= tex_color.rgb;
+
+  // toon term
+  let toon_color = textureSample(toon_texture, toon_texture_sampler, vec2<f32>(0.5, 1.0 - ln)).rgb;
+  color *= toon_color;
+
+  // specular term
+  var specular_color = vec3<f32>(0.0);
+  if (0.0 < uniforms.specular_strength) {
+    let half = normalize(light_dir + eye_dir);
+    let color = uniforms.specular_color * uniforms.light_color;
+    specular_color += color * pow(max(dot(normal, half), 0.0), uniforms.specular_strength);
+  }
+  color += specular_color;
+
+  // final
   var out: FragmentOutput;
-  out.color = uniforms.diffuse_color * textureSample(texture, texture_sampler, in.uv);
+  out.color = vec4<f32>(color, alpha);
   return out;
 }

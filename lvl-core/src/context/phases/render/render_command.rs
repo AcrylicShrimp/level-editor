@@ -1,5 +1,5 @@
 use crate::gfx::BufferSlicer;
-use std::{cell::RefMut, sync::Arc};
+use std::{cell::RefMut, ops::Range, sync::Arc};
 use wgpu::{BindGroup, BufferSlice, IndexFormat, RenderPass, RenderPipeline};
 
 pub struct RenderCommand<'a> {
@@ -10,7 +10,7 @@ pub struct RenderCommand<'a> {
     vertex_buffer_slice: BufferSlice<'a>,
     index_buffer_slice: BufferSlice<'a>,
     index_format: IndexFormat,
-    index_range: (u32, u32),
+    index_range: Range<u32>,
 }
 
 impl<'a> RenderCommand<'a> {
@@ -22,7 +22,7 @@ impl<'a> RenderCommand<'a> {
         vertex_buffer_slice: BufferSlice<'a>,
         index_buffer_slice: BufferSlice<'a>,
         index_format: IndexFormat,
-        index_range: (u32, u32),
+        index_range: Range<u32>,
     ) -> Self {
         Self {
             builtin_uniform_bind_group,
@@ -66,6 +66,6 @@ impl<'a> RenderCommand<'a> {
         render_pass.set_vertex_buffer(1, self.vertex_buffer_slice);
         render_pass.set_index_buffer(self.index_buffer_slice, self.index_format);
 
-        render_pass.draw_indexed(self.index_range.0..self.index_range.1, 0, 0..1);
+        render_pass.draw_indexed(self.index_range.clone(), 0, 0..1);
     }
 }

@@ -59,7 +59,7 @@ fn increase_custom_binding_groups(module: &mut Module) {
 }
 
 fn increase_custom_locations(module: &mut Module, instance_input_typename: &str) {
-    const LOCATION_OFFSET: u32 = 4;
+    const LOCATION_OFFSET: u32 = 8;
 
     let vertex_entry_point = module
         .entry_points

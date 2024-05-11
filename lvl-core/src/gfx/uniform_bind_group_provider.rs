@@ -1,4 +1,4 @@
-use lvl_math::Mat4;
+use lvl_math::{Mat4, Vec3};
 use std::{mem::size_of, num::NonZeroU64};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
@@ -6,6 +6,9 @@ use wgpu::{
     BufferDescriptor, BufferUsages, Device, Queue, ShaderStages,
 };
 use zerocopy::AsBytes;
+
+const BUFFER_SIZE: NonZeroU64 =
+    unsafe { NonZeroU64::new_unchecked(size_of::<[[f32; 4]; 5]>() as u64) };
 
 pub struct UniformBindGroupProvider {
     buffer: Buffer,
@@ -23,9 +26,7 @@ impl UniformBindGroupProvider {
                 ty: BindingType::Buffer {
                     ty: BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size: Some(
-                        NonZeroU64::new(size_of::<[[f32; 4]; 4]>() as u64).unwrap(),
-                    ),
+                    min_binding_size: Some(BUFFER_SIZE),
                 },
                 count: None,
             }],
@@ -33,7 +34,7 @@ impl UniformBindGroupProvider {
 
         let buffer = device.create_buffer(&BufferDescriptor {
             label: None,
-            size: size_of::<[[f32; 4]; 4]>() as u64,
+            size: size_of::<[[f32; 4]; 5]>() as u64,
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -46,7 +47,7 @@ impl UniformBindGroupProvider {
                 resource: BindingResource::Buffer(BufferBinding {
                     buffer: &buffer,
                     offset: 0,
-                    size: Some(NonZeroU64::new(size_of::<[[f32; 4]; 4]>() as u64).unwrap()),
+                    size: Some(BUFFER_SIZE),
                 }),
             }],
         });
@@ -66,13 +67,11 @@ impl UniformBindGroupProvider {
         &self.bind_group_layout
     }
 
-    pub fn update_camera_matrix(&self, matrix: &Mat4, queue: &Queue) {
-        if let Some(mut view) = queue.write_buffer_with(
-            &self.buffer,
-            0,
-            NonZeroU64::new(size_of::<[[f32; 4]; 4]>() as u64).unwrap(),
-        ) {
-            view.copy_from_slice(matrix.as_bytes());
+    pub fn update_camera_matrix(&self, matrix: &Mat4, world_position: Vec3, queue: &Queue) {
+        if let Some(mut view) = queue.write_buffer_with(&self.buffer, 0, BUFFER_SIZE) {
+            view[..size_of::<[[f32; 4]; 4]>()].copy_from_slice(matrix.as_bytes());
+            view[size_of::<[[f32; 4]; 4]>()..size_of::<[[f32; 4]; 5]>() - size_of::<f32>()]
+                .copy_from_slice(world_position.as_bytes());
         }
     }
 }

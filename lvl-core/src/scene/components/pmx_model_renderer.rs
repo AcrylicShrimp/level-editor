@@ -5,7 +5,7 @@ use crate::{
     },
     scene::Component,
 };
-use lvl_resource::{MaterialRenderType, PmxModelVertexLayoutElementKind};
+use lvl_resource::PmxModelVertexLayoutElementKind;
 use std::{
     any::Any,
     cell::{RefCell, RefMut},
@@ -13,9 +13,9 @@ use std::{
 };
 use wgpu::{
     BlendState, ColorTargetState, ColorWrites, CompareFunction, DepthStencilState, Device, Face,
-    FragmentState, FrontFace, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline,
-    RenderPipelineDescriptor, StencilFaceState, StencilState, TextureFormat, VertexAttribute,
-    VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+    FragmentState, FrontFace, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPass,
+    RenderPipeline, RenderPipelineDescriptor, StencilFaceState, StencilState, TextureFormat,
+    VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
 };
 
 #[derive(Debug)]
@@ -144,7 +144,7 @@ impl PmxModelRenderer {
                 // TODO: let engine decide actual depth stencil state
                 format: TextureFormat::Depth32Float,
                 depth_write_enabled: true,
-                depth_compare: CompareFunction::LessEqual,
+                depth_compare: CompareFunction::Less,
                 stencil: StencilState {
                     front: StencilFaceState::IGNORE,
                     back: StencilFaceState::IGNORE,
@@ -160,16 +160,15 @@ impl PmxModelRenderer {
                 targets: &[Some(ColorTargetState {
                     // TODO: let engine decide actual color target state
                     format: TextureFormat::Bgra8UnormSrgb,
-                    blend: match material.render_state().render_type {
-                        MaterialRenderType::Opaque => None,
-                        MaterialRenderType::Transparent => Some(BlendState::ALPHA_BLENDING),
-                    },
+                    blend: Some(BlendState::ALPHA_BLENDING),
                     write_mask: ColorWrites::all(),
                 })],
             }),
             multiview: None,
         })
     }
+
+    pub(crate) fn render(&self, render_pass: &mut RenderPass) {}
 }
 
 fn shader_input_name_from_vertex_layout_kind(kind: PmxModelVertexLayoutElementKind) -> String {
@@ -183,8 +182,8 @@ fn shader_input_name_from_vertex_layout_kind(kind: PmxModelVertexLayoutElementKi
         PmxModelVertexLayoutElementKind::BoneIndex => "bone_index".to_owned(),
         PmxModelVertexLayoutElementKind::BoneWeight => "bone_weight".to_owned(),
         PmxModelVertexLayoutElementKind::SdefC => "sdef_c".to_owned(),
-        PmxModelVertexLayoutElementKind::SdefR0 => "sdef_r0".to_owned(),
-        PmxModelVertexLayoutElementKind::SdefR1 => "sdef_r1".to_owned(),
+        PmxModelVertexLayoutElementKind::SdefR0 => "sdef_r0_".to_owned(),
+        PmxModelVertexLayoutElementKind::SdefR1 => "sdef_r1_".to_owned(),
         PmxModelVertexLayoutElementKind::EdgeSize => "edge_size".to_owned(),
         PmxModelVertexLayoutElementKind::VertexMorphIndexStart => {
             "vertex_morph_index_start".to_owned()

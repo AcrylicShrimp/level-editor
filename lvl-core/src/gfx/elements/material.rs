@@ -2,7 +2,7 @@ use super::Shader;
 use crate::gfx::GfxContext;
 use lvl_math::{Vec2, Vec3, Vec4};
 use lvl_resource::{
-    MaterialPropertyValueUniformKind, MaterialRenderState, MaterialSource, ShaderBindingKind,
+    MaterialPropertyUniformValue, MaterialRenderState, MaterialSource, ShaderBindingKind,
     ShaderSource,
 };
 use std::{
@@ -140,19 +140,19 @@ impl Material {
                         Some(MaterialPropertyValue::Sampler(Arc::new(sampler)))
                     }
                     lvl_resource::MaterialPropertyValue::Uniform(kind) => match kind {
-                        MaterialPropertyValueUniformKind::Float(value) => {
+                        MaterialPropertyUniformValue::Float(value) => {
                             Some(MaterialPropertyValue::Float(*value))
                         }
-                        MaterialPropertyValueUniformKind::Vec2(value) => {
+                        MaterialPropertyUniformValue::Vec2(value) => {
                             Some(MaterialPropertyValue::Vec2(*value))
                         }
-                        MaterialPropertyValueUniformKind::Vec3(value) => {
+                        MaterialPropertyUniformValue::Vec3(value) => {
                             Some(MaterialPropertyValue::Vec3(*value))
                         }
-                        MaterialPropertyValueUniformKind::Vec4(value) => {
+                        MaterialPropertyUniformValue::Vec4(value) => {
                             Some(MaterialPropertyValue::Vec4(*value))
                         }
-                        MaterialPropertyValueUniformKind::U32(value) => {
+                        MaterialPropertyUniformValue::U32(value) => {
                             Some(MaterialPropertyValue::U32(*value))
                         }
                     },
@@ -188,19 +188,19 @@ impl Material {
                     lvl_resource::MaterialPropertyValue::Texture { .. } => None,
                     lvl_resource::MaterialPropertyValue::Sampler { .. } => None,
                     lvl_resource::MaterialPropertyValue::Uniform(kind) => match kind {
-                        MaterialPropertyValueUniformKind::Float(value) => {
+                        MaterialPropertyUniformValue::Float(value) => {
                             Some(MaterialPropertyValue::Float(*value))
                         }
-                        MaterialPropertyValueUniformKind::Vec2(value) => {
+                        MaterialPropertyUniformValue::Vec2(value) => {
                             Some(MaterialPropertyValue::Vec2(*value))
                         }
-                        MaterialPropertyValueUniformKind::Vec3(value) => {
+                        MaterialPropertyUniformValue::Vec3(value) => {
                             Some(MaterialPropertyValue::Vec3(*value))
                         }
-                        MaterialPropertyValueUniformKind::Vec4(value) => {
+                        MaterialPropertyUniformValue::Vec4(value) => {
                             Some(MaterialPropertyValue::Vec4(*value))
                         }
-                        MaterialPropertyValueUniformKind::U32(value) => {
+                        MaterialPropertyUniformValue::U32(value) => {
                             Some(MaterialPropertyValue::U32(*value))
                         }
                     },
@@ -467,6 +467,12 @@ pub struct MaterialProperty {
     binding: u32,
     kind: MaterialPropertyKind,
     value: Option<MaterialPropertyValue>,
+}
+
+impl MaterialProperty {
+    pub fn value(&self) -> Option<&MaterialPropertyValue> {
+        self.value.as_ref()
+    }
 }
 
 #[derive(Debug)]

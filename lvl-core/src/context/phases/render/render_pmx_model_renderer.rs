@@ -1,6 +1,6 @@
 use super::render_command::RenderCommand;
 use crate::{
-    gfx::{GfxContext, InstanceDataProvider},
+    gfx::{elements::MaterialPropertyValue, GfxContext, InstanceDataProvider},
     scene::components::PmxModelRenderer,
 };
 use lvl_math::Mat4;
@@ -37,6 +37,20 @@ pub fn build_render_command_pmx_model_renderer<'r>(
 
     for (index, element) in model.elements().iter().enumerate() {
         let material = &element.material;
+        let diffuse_color = material
+            .get_property("diffuse_color")
+            .and_then(|property| property.value())
+            .and_then(|value| match value {
+                MaterialPropertyValue::Vec4(value) => Some(*value),
+                _ => None,
+            });
+
+        if let Some(diffuse_color) = diffuse_color {
+            if diffuse_color.w <= f32::EPSILON {
+                continue;
+            }
+        }
+
         let bind_groups = match material.construct_bind_groups(gfx_ctx) {
             Some(bind_groups) => bind_groups,
             None => {
@@ -52,7 +66,7 @@ pub fn build_render_command_pmx_model_renderer<'r>(
             model.vertex_buffer().slice(..),
             model.index_buffer().slice(..),
             index_format,
-            element.index_range,
+            element.index_range.clone(),
         ));
     }
 

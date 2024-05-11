@@ -2,7 +2,7 @@ use super::{Material, MaterialPropertyValue, Shader, Texture};
 use crate::gfx::GfxContext;
 use lvl_math::{Vec3, Vec4};
 use lvl_resource::{
-    MaterialPropertyValueUniformKind, MaterialSource, PmxModelIndexKind, PmxModelMorphKind,
+    MaterialPropertyUniformValue, MaterialSource, PmxModelIndexKind, PmxModelMorphKind,
     PmxModelMorphMaterialElement, PmxModelMorphMaterialOffsetMode, PmxModelSource,
     PmxModelVertexLayoutElement, PmxModelVertexLayoutElementKind, ResourceFile, ShaderSource,
     TextureKind, TextureSource,
@@ -11,6 +11,7 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     mem::size_of,
     num::NonZeroU64,
+    ops::Range,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -113,11 +114,6 @@ impl PmxModel {
         let mut elements = Vec::with_capacity(source.elements().len());
 
         for pmx_element in source.elements() {
-            if pmx_element.index_range.1 <= pmx_element.index_range.0 {
-                material_morph_targets.push(None);
-                continue;
-            }
-
             let material_source = match resource.find::<MaterialSource>(&pmx_element.material_name)
             {
                 Some(source) => source,
@@ -134,7 +130,7 @@ impl PmxModel {
                     .get("diffuse_color")
                     .and_then(|property| match &property.value {
                         lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
-                            MaterialPropertyValueUniformKind::Vec4(value) => Some(*value),
+                            MaterialPropertyUniformValue::Vec4(value) => Some(*value),
                             _ => None,
                         },
                         _ => None,
@@ -145,7 +141,7 @@ impl PmxModel {
                     .get("specular_color")
                     .and_then(|property| match &property.value {
                         lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
-                            MaterialPropertyValueUniformKind::Vec3(value) => Some(*value),
+                            MaterialPropertyUniformValue::Vec3(value) => Some(*value),
                             _ => None,
                         },
                         _ => None,
@@ -156,7 +152,7 @@ impl PmxModel {
                     .get("specular_strength")
                     .and_then(|property| match &property.value {
                         lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
-                            MaterialPropertyValueUniformKind::Float(value) => Some(*value),
+                            MaterialPropertyUniformValue::Float(value) => Some(*value),
                             _ => None,
                         },
                         _ => None,
@@ -167,7 +163,7 @@ impl PmxModel {
                     .get("ambient_color")
                     .and_then(|property| match &property.value {
                         lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
-                            MaterialPropertyValueUniformKind::Vec3(value) => Some(*value),
+                            MaterialPropertyUniformValue::Vec3(value) => Some(*value),
                             _ => None,
                         },
                         _ => None,
@@ -178,7 +174,7 @@ impl PmxModel {
                     .get("edge_color")
                     .and_then(|property| match &property.value {
                         lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
-                            MaterialPropertyValueUniformKind::Vec4(value) => Some(*value),
+                            MaterialPropertyUniformValue::Vec4(value) => Some(*value),
                             _ => None,
                         },
                         _ => None,
@@ -189,7 +185,7 @@ impl PmxModel {
                     .get("edge_size")
                     .and_then(|property| match &property.value {
                         lvl_resource::MaterialPropertyValue::Uniform(value) => match value {
-                            MaterialPropertyValueUniformKind::Float(value) => Some(*value),
+                            MaterialPropertyUniformValue::Float(value) => Some(*value),
                             _ => None,
                         },
                         _ => None,
@@ -215,8 +211,8 @@ impl PmxModel {
             );
 
             elements.push(PmxModelElement {
-                material: material,
-                index_range: pmx_element.index_range,
+                material,
+                index_range: pmx_element.index_range.0..pmx_element.index_range.1,
             });
         }
 
@@ -387,7 +383,7 @@ impl PmxModel {
 #[derive(Debug)]
 pub struct PmxModelElement {
     pub material: Material,
-    pub index_range: (u32, u32),
+    pub index_range: Range<u32>,
 }
 
 #[derive(Debug, Clone, Hash)]

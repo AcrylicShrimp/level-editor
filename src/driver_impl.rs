@@ -89,6 +89,26 @@ impl Driver for DriverImpl {
             let pmx_model_id = make_pmx_model_renderer(&resource, "モナ・Mona", scene).unwrap();
             self.pmx_model_id = Some(pmx_model_id);
 
+            let pmx_model_object = scene
+                .find_object_by_id_mut(self.pmx_model_id.unwrap())
+                .unwrap();
+            let pmx_model_renderer = pmx_model_object
+                .find_component_by_type_mut::<PmxModelRenderer>()
+                .unwrap();
+
+            let pmx_model = pmx_model_renderer.model_mut();
+
+            pmx_model.set_morph("+EarPierce", 1f32);
+            pmx_model.set_morph("+TKB", 1f32);
+            pmx_model.set_morph("+Shoes", 1f32);
+            pmx_model.set_morph("+Tebukuro1", 1f32);
+            pmx_model.set_morph("+Tebukuro2", 1f32);
+            pmx_model.set_morph("+Hat", 1f32);
+            pmx_model.set_morph("+ShoulderVeil", 1f32);
+            pmx_model.set_morph("+NeckBand", 1f32);
+            pmx_model.set_morph("+Tights", 1f32);
+            pmx_model.set_morph("+LegAccessory", 1f32);
+
             make_light_object(
                 Vec3::new(10.0, 20.0, 10.0),
                 LightKind::Directional {
@@ -109,14 +129,14 @@ impl Driver for DriverImpl {
     fn on_after_update(&mut self, context: &Context, _window: &Window, scene: &mut Scene) {
         let delta = context.time().delta_time().as_secs_f32();
 
-        scene.with_proxy(|proxy| {
+        scene.with_proxy(|scene| {
             let angle_speed = f32::to_radians(80.0);
             let movement_speed = 4.0;
 
-            let camera = proxy.find_object_by_id(self.camera_id.unwrap()).unwrap();
+            let camera = scene.find_object_by_id(self.camera_id.unwrap()).unwrap();
             let mut camera_transform = camera.transform();
 
-            let local_to_world_matrix = proxy
+            let local_to_world_matrix = scene
                 .local_to_world_matrix(self.camera_id.unwrap())
                 .unwrap();
 
@@ -172,11 +192,11 @@ impl Driver for DriverImpl {
                 camera_transform.position += Vec3::from_vec4(right) * delta * movement_speed;
             }
 
-            proxy.set_transform(self.camera_id.unwrap(), camera_transform);
+            scene.set_transform(self.camera_id.unwrap(), camera_transform);
         });
 
-        scene.with_proxy(|proxy| {
-            let pmx_model_object = proxy
+        scene.with_proxy(|scene| {
+            let pmx_model_object = scene
                 .find_object_by_id_mut(self.pmx_model_id.unwrap())
                 .unwrap();
             let pmx_model_renderer = pmx_model_object

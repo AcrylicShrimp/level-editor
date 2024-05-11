@@ -171,6 +171,7 @@ impl HierarchyStorage {
         &self.object_matrices[object_id.get_zero_based_u32() as usize]
     }
 
+    #[cfg(test)]
     pub(crate) fn matrix_mut(&mut self, object_id: ObjectId) -> &mut Mat4 {
         &mut self.object_matrices[object_id.get_zero_based_u32() as usize]
     }

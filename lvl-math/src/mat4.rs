@@ -187,6 +187,10 @@ impl Mat4 {
         (position, rotation, scale)
     }
 
+    pub fn split_translation(&self) -> Vec3 {
+        Vec3::new(self.elements[12], self.elements[13], self.elements[14])
+    }
+
     pub fn determinant(&self) -> f32 {
         let a = self.elements[0 * 4 + 0];
         let b = self.elements[0 * 4 + 1];

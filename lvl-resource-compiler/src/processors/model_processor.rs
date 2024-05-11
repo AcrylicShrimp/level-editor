@@ -71,11 +71,10 @@ mod pmx {
     use lvl_math::{Vec3, Vec4};
     use lvl_pmx::{Pmx, PmxIndices, PmxMaterial, PmxTexture, PmxVertex};
     use lvl_resource::{
-        MaterialProperty, MaterialPropertyValue, MaterialPropertyValueUniformKind,
-        MaterialRenderState, MaterialRenderType, MaterialSource, MeshElement, MeshElementKind,
-        MeshIndexKind, MeshSource, Resource, ResourceKind, ShaderSource,
-        TextureElementSamplingMode, TextureElementTextureFormat, TextureElementWrappingMode,
-        TextureSource,
+        MaterialProperty, MaterialPropertyUniformValue, MaterialPropertyValue, MaterialRenderState,
+        MaterialRenderType, MaterialSource, MeshElement, MeshElementKind, MeshIndexKind,
+        MeshSource, Resource, ResourceKind, ShaderSource, TextureElementSamplingMode,
+        TextureElementTextureFormat, TextureElementWrappingMode, TextureSource,
     };
     use std::{
         collections::{hash_map::Entry, BTreeSet, HashMap},
@@ -296,55 +295,47 @@ mod pmx {
 
         properties.push(MaterialProperty {
             name: "diffuse_color".to_owned(),
-            value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Vec4(
-                Vec4::new(
-                    pmx_material.diffuse_color.x,
-                    pmx_material.diffuse_color.y,
-                    pmx_material.diffuse_color.z,
-                    pmx_material.diffuse_color.w,
-                ),
-            )),
+            value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::new(
+                pmx_material.diffuse_color.x,
+                pmx_material.diffuse_color.y,
+                pmx_material.diffuse_color.z,
+                pmx_material.diffuse_color.w,
+            ))),
         });
         properties.push(MaterialProperty {
             name: "specular_color".to_owned(),
-            value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Vec3(
-                Vec3::new(
-                    pmx_material.specular_color.x,
-                    pmx_material.specular_color.y,
-                    pmx_material.specular_color.z,
-                ),
-            )),
+            value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec3(Vec3::new(
+                pmx_material.specular_color.x,
+                pmx_material.specular_color.y,
+                pmx_material.specular_color.z,
+            ))),
         });
         properties.push(MaterialProperty {
             name: "specular_strength".to_owned(),
-            value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Float(
+            value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Float(
                 pmx_material.specular_strength,
             )),
         });
         properties.push(MaterialProperty {
             name: "ambient_color".to_owned(),
-            value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Vec3(
-                Vec3::new(
-                    pmx_material.ambient_color.x,
-                    pmx_material.ambient_color.y,
-                    pmx_material.ambient_color.z,
-                ),
-            )),
+            value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec3(Vec3::new(
+                pmx_material.ambient_color.x,
+                pmx_material.ambient_color.y,
+                pmx_material.ambient_color.z,
+            ))),
         });
         properties.push(MaterialProperty {
             name: "edge_color".to_owned(),
-            value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Vec4(
-                Vec4::new(
-                    pmx_material.edge_color.x,
-                    pmx_material.edge_color.y,
-                    pmx_material.edge_color.z,
-                    pmx_material.edge_color.w,
-                ),
-            )),
+            value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::new(
+                pmx_material.edge_color.x,
+                pmx_material.edge_color.y,
+                pmx_material.edge_color.z,
+                pmx_material.edge_color.w,
+            ))),
         });
         properties.push(MaterialProperty {
             name: "edge_size".to_owned(),
-            value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Float(
+            value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Float(
                 pmx_material.edge_size,
             )),
         });

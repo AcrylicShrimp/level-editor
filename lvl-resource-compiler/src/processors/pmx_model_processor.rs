@@ -7,7 +7,7 @@ use lvl_pmx::{
     PmxMorphOffset, PmxMorphOffsetMaterialOffsetMode, PmxTexture, PmxVertex, PmxVertexDeformKind,
 };
 use lvl_resource::{
-    MaterialProperty, MaterialPropertyValue, MaterialPropertyValueUniformKind, MaterialRenderState,
+    MaterialProperty, MaterialPropertyUniformValue, MaterialPropertyValue, MaterialRenderState,
     MaterialRenderType, MaterialSource, PmxModelElement, PmxModelIndexKind, PmxModelMorph,
     PmxModelMorphGroupElement, PmxModelMorphKind, PmxModelMorphMaterialElement,
     PmxModelMorphMaterialOffsetMode, PmxModelSource, PmxModelVertexLayoutElement,
@@ -1217,7 +1217,7 @@ fn make_material_source(
 
     properties.push(MaterialProperty {
         name: "diffuse_color".to_owned(),
-        value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Vec4(Vec4::new(
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::new(
             pmx_material.diffuse_color.x,
             pmx_material.diffuse_color.y,
             pmx_material.diffuse_color.z,
@@ -1226,7 +1226,7 @@ fn make_material_source(
     });
     properties.push(MaterialProperty {
         name: "specular_color".to_owned(),
-        value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Vec3(Vec3::new(
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec3(Vec3::new(
             pmx_material.specular_color.x,
             pmx_material.specular_color.y,
             pmx_material.specular_color.z,
@@ -1234,13 +1234,13 @@ fn make_material_source(
     });
     properties.push(MaterialProperty {
         name: "specular_strength".to_owned(),
-        value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Float(
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Float(
             pmx_material.specular_strength,
         )),
     });
     properties.push(MaterialProperty {
         name: "ambient_color".to_owned(),
-        value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Vec3(Vec3::new(
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec3(Vec3::new(
             pmx_material.ambient_color.x,
             pmx_material.ambient_color.y,
             pmx_material.ambient_color.z,
@@ -1248,7 +1248,7 @@ fn make_material_source(
     });
     properties.push(MaterialProperty {
         name: "edge_color".to_owned(),
-        value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Vec4(Vec4::new(
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Vec4(Vec4::new(
             pmx_material.edge_color.x,
             pmx_material.edge_color.y,
             pmx_material.edge_color.z,
@@ -1257,13 +1257,13 @@ fn make_material_source(
     });
     properties.push(MaterialProperty {
         name: "edge_size".to_owned(),
-        value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::Float(
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::Float(
             pmx_material.edge_size,
         )),
     });
     properties.push(MaterialProperty {
         name: "env_blend_mode".to_owned(),
-        value: MaterialPropertyValue::Uniform(MaterialPropertyValueUniformKind::U32(
+        value: MaterialPropertyValue::Uniform(MaterialPropertyUniformValue::U32(
             match pmx_material.environment_blend_mode {
                 PmxMaterialEnvironmentBlendMode::Disabled => 0,
                 PmxMaterialEnvironmentBlendMode::Multiplicative => 1,

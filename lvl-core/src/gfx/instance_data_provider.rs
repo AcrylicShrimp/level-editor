@@ -8,7 +8,7 @@ pub struct InstanceDataProvider;
 
 impl InstanceDataProvider {
     pub fn instance_data_size(&self) -> u64 {
-        size_of::<[[f32; 4]; 4]>() as u64
+        size_of::<[[f32; 4]; 8]>() as u64
     }
 
     pub fn instance_data_attributes(&self) -> &'static [VertexAttribute] {
@@ -33,6 +33,26 @@ impl InstanceDataProvider {
                 offset: (size_of::<[f32; 4]>() * 3) as u64,
                 shader_location: 3,
             },
+            VertexAttribute {
+                format: VertexFormat::Float32x4,
+                offset: (size_of::<[f32; 4]>() * 4) as u64,
+                shader_location: 4,
+            },
+            VertexAttribute {
+                format: VertexFormat::Float32x4,
+                offset: (size_of::<[f32; 4]>() * 5) as u64,
+                shader_location: 5,
+            },
+            VertexAttribute {
+                format: VertexFormat::Float32x4,
+                offset: (size_of::<[f32; 4]>() * 6) as u64,
+                shader_location: 6,
+            },
+            VertexAttribute {
+                format: VertexFormat::Float32x4,
+                offset: (size_of::<[f32; 4]>() * 7) as u64,
+                shader_location: 7,
+            },
         ]
     }
 
@@ -47,7 +67,8 @@ impl InstanceDataProvider {
         let slicer = buffer_pool.allocate(size, device);
 
         if let Some(mut view) = queue.write_buffer_with(slicer.buffer(), slicer.offset(), size) {
-            view.copy_from_slice(matrix.as_bytes());
+            view[..size_of::<[f32; 4]>() * 4].copy_from_slice(matrix.as_bytes());
+            view[size_of::<[f32; 4]>() * 4..].copy_from_slice(matrix.inversed().as_bytes());
         }
 
         slicer

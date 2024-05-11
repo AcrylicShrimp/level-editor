@@ -74,6 +74,7 @@ pub struct MaterialProperty {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MaterialPropertyValue {
+    Uniform(MaterialPropertyUniformValue),
     Texture {
         texture_name: String,
     },
@@ -90,11 +91,10 @@ pub enum MaterialPropertyValue {
         anisotropy_clamp: u16,
         border_color: Option<SamplerBorderColor>,
     },
-    Uniform(MaterialPropertyValueUniformKind),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum MaterialPropertyValueUniformKind {
+pub enum MaterialPropertyUniformValue {
     Float(f32),
     Vec2(Vec2),
     Vec3(Vec3),
