@@ -96,19 +96,6 @@ impl Driver for DriverImpl {
                 .find_component_by_type_mut::<PmxModelRenderer>()
                 .unwrap();
 
-            let pmx_model = pmx_model_renderer.model_mut();
-
-            pmx_model.set_morph("+EarPierce", 1f32);
-            pmx_model.set_morph("+TKB", 1f32);
-            pmx_model.set_morph("+Shoes", 1f32);
-            pmx_model.set_morph("+Tebukuro1", 1f32);
-            pmx_model.set_morph("+Tebukuro2", 1f32);
-            pmx_model.set_morph("+Hat", 1f32);
-            pmx_model.set_morph("+ShoulderVeil", 1f32);
-            pmx_model.set_morph("+NeckBand", 1f32);
-            pmx_model.set_morph("+Tights", 1f32);
-            pmx_model.set_morph("+LegAccessory", 1f32);
-
             make_light_object(
                 Vec3::new(10.0, 20.0, 10.0),
                 LightKind::Directional {
