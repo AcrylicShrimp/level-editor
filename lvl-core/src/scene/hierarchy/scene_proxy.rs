@@ -155,6 +155,14 @@ impl<'scene, 'window> SceneProxy<'scene, 'window> {
         self.hierarchy_storage.is_active_self(object_id)
     }
 
+    pub fn name(&self, object_id: ObjectId) -> &str {
+        self.hierarchy_storage.name(object_id)
+    }
+
+    pub fn name_interned(&self, object_id: ObjectId) -> string_interner::DefaultSymbol {
+        self.hierarchy_storage.name_interned(object_id)
+    }
+
     pub fn local_to_world_matrix(&self, object_id: ObjectId) -> Option<Mat4> {
         if !self.object_storage.is_exists(object_id) {
             return None;
@@ -292,6 +300,14 @@ impl<'scene, 'window> SceneProxy<'scene, 'window> {
                 _ => {}
             }
         }
+    }
+
+    pub fn intern_name(&mut self, name: &str) -> string_interner::DefaultSymbol {
+        self.hierarchy_storage.intern_name(name)
+    }
+
+    pub fn set_name(&mut self, object_id: ObjectId, name: &str) {
+        self.hierarchy_storage.set_name(object_id, name);
     }
 
     pub fn set_transform(&mut self, object_id: ObjectId, transform: Transform) {

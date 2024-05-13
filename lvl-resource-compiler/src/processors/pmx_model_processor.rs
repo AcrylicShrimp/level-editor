@@ -3,12 +3,15 @@ use anyhow::{anyhow, Error as AnyError};
 use log::{error, warn};
 use lvl_math::{Vec3, Vec4};
 use lvl_pmx::{
-    Pmx, PmxIndices, PmxMaterial, PmxMaterialEnvironmentBlendMode, PmxMaterialToonMode, PmxMorph,
-    PmxMorphOffset, PmxMorphOffsetMaterialOffsetMode, PmxTexture, PmxVertex, PmxVertexDeformKind,
+    Pmx, PmxBone, PmxBoneInheritanceMode, PmxIndices, PmxMaterial, PmxMaterialEnvironmentBlendMode,
+    PmxMaterialToonMode, PmxMorph, PmxMorphOffset, PmxMorphOffsetMaterialOffsetMode, PmxTexture,
+    PmxVertex, PmxVertexDeformKind,
 };
 use lvl_resource::{
     MaterialProperty, MaterialPropertyUniformValue, MaterialPropertyValue, MaterialRenderState,
-    MaterialRenderType, MaterialSource, PmxModelElement, PmxModelIndexKind, PmxModelMorph,
+    MaterialRenderType, MaterialSource, PmxModelBone, PmxModelBoneFlags, PmxModelBoneIK,
+    PmxModelBoneIKAngleLimit, PmxModelBoneIKLink, PmxModelBoneInheritance,
+    PmxModelBoneInheritanceMode, PmxModelElement, PmxModelIndexKind, PmxModelMorph,
     PmxModelMorphGroupElement, PmxModelMorphKind, PmxModelMorphMaterialElement,
     PmxModelMorphMaterialOffsetMode, PmxModelSource, PmxModelVertexLayoutElement,
     PmxModelVertexLayoutElementKind, Resource, ResourceKind, TextureElement,
@@ -44,8 +47,10 @@ impl Processor for PmxModelProcessor {
     }
 
     fn process(file: &Path, metadata: Option<&Self::Metadata>) -> Result<Vec<Resource>, AnyError> {
-        let content = std::fs::read(file)?;
-        let pmx = Pmx::parse(&content)?;
+        let pmx = {
+            let content = std::fs::read(file)?;
+            Pmx::parse(&content)?
+        };
 
         let full_shader_name = format!("{}/shader:{}", pmx.header.model_name_local, "standard");
         let no_toon_shader_name = format!(
@@ -116,6 +121,8 @@ impl Processor for PmxModelProcessor {
         let (index_data, index_kind, elements) =
             make_index_data(pmx_material_namer, &pmx.materials, &pmx.indices);
 
+        let pmx_bones = make_bone_data(&pmx.bones);
+
         let pmx_model = PmxModelSource::new(
             vertex_data,
             vertex_layout,
@@ -123,6 +130,7 @@ impl Processor for PmxModelProcessor {
             index_kind,
             elements,
             morph_data.morphs,
+            pmx_bones,
             vertex_morph_index_texture_name.clone(),
             uv_morph_index_texture_name.clone(),
             vertex_displacement_texture_name.clone(),
@@ -1468,4 +1476,104 @@ fn make_internal_toon_texture_source(
             wrapping_mode_v: Some(TextureElementWrappingMode::Clamp),
         },
     )
+}
+
+fn make_bone_data(pmx_bones: &[PmxBone]) -> Vec<PmxModelBone> {
+    let mut bones = Vec::with_capacity(pmx_bones.len());
+
+    for pmx_bone in pmx_bones {
+        bones.push(PmxModelBone {
+            name: pmx_bone.name_local.clone(),
+            position: Vec3::new(
+                pmx_bone.position.x,
+                pmx_bone.position.y,
+                pmx_bone.position.z,
+            ),
+            parent_index: {
+                let index = pmx_bone.parent_index.get();
+
+                if index < 0 || pmx_bones.len() <= index as usize {
+                    None
+                } else {
+                    Some(index as u32)
+                }
+            },
+            layer: pmx_bone.layer,
+            flags: PmxModelBoneFlags {
+                supports_ik: pmx_bone.flags.supports_ik,
+                inherit_rotation: pmx_bone.flags.inherit_rotation,
+                inherit_translation: pmx_bone.flags.inherit_translation,
+                local_coordinate: pmx_bone.flags.local_coordinate,
+                physics_after_deform: pmx_bone.flags.physics_after_deform,
+            },
+            inheritance: pmx_bone.inheritance.as_ref().and_then(|inheritance| {
+                let index = if inheritance.index.get() < 0
+                    || pmx_bones.len() <= inheritance.index.get() as usize
+                {
+                    return None;
+                } else {
+                    inheritance.index.get() as u32
+                };
+
+                Some(PmxModelBoneInheritance {
+                    index,
+                    coefficient: inheritance.coefficient,
+                    inheritance_mode: match inheritance.inheritance_mode {
+                        PmxBoneInheritanceMode::Both => PmxModelBoneInheritanceMode::Both,
+                        PmxBoneInheritanceMode::RotationOnly => {
+                            PmxModelBoneInheritanceMode::RotationOnly
+                        }
+                        PmxBoneInheritanceMode::TranslationOnly => {
+                            PmxModelBoneInheritanceMode::TranslationOnly
+                        }
+                    },
+                })
+            }),
+            ik: pmx_bone.ik.as_ref().and_then(|ik| {
+                let index = if ik.index.get() < 0 || pmx_bones.len() <= ik.index.get() as usize {
+                    return None;
+                } else {
+                    ik.index.get() as u32
+                };
+
+                let mut links = Vec::with_capacity(ik.links.len());
+
+                for link in &ik.links {
+                    let index =
+                        if link.index.get() < 0 || pmx_bones.len() <= link.index.get() as usize {
+                            return None;
+                        } else {
+                            ik.index.get() as u32
+                        };
+
+                    links.push(PmxModelBoneIKLink {
+                        index,
+                        angle_limit: link.angle_limit.as_ref().map(|angle_limit| {
+                            PmxModelBoneIKAngleLimit {
+                                min: Vec3::new(
+                                    angle_limit.min.x,
+                                    angle_limit.min.y,
+                                    angle_limit.min.z,
+                                ),
+                                max: Vec3::new(
+                                    angle_limit.max.x,
+                                    angle_limit.max.y,
+                                    angle_limit.max.z,
+                                ),
+                            }
+                        }),
+                    });
+                }
+
+                Some(PmxModelBoneIK {
+                    index,
+                    loop_count: ik.loop_count,
+                    limit_angle: ik.limit_angle,
+                    links,
+                })
+            }),
+        });
+    }
+
+    bones
 }

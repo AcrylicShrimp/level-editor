@@ -13,6 +13,7 @@ lvl-resource = { path = "../lvl-resource" }
 parking_lot = "0.12"
 pollster = "0.3"
 serde = { version = "1", features = ["derive"] }
+string-interner = "0.17"
 thiserror = "1"
 wgpu = "0.19"
 winit = "0.29"

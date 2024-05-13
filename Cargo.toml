@@ -22,5 +22,5 @@ members = [
   "lvl-math",
   "lvl-pmx",
   "lvl-resource",
-  "lvl-resource-compiler",
+  "lvl-resource-compiler", "lvl-vmd",
 ]

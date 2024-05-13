@@ -2,6 +2,7 @@ use crate::scene::ObjectId;
 use bitvec::vec::BitVec;
 use lvl_math::Mat4;
 use std::{cmp::Ordering, ops::Range};
+use string_interner::StringInterner;
 
 #[derive(Debug, Clone, Copy, Eq, Ord, Hash)]
 pub(crate) struct ObjectSpan {
@@ -103,10 +104,13 @@ pub struct HierarchyStorage {
     object_current_frame_dirties: BitVec,
     object_actives: BitVec,
     object_active_selfs: BitVec,
+    object_names: Vec<string_interner::DefaultSymbol>,
     // unordered
     object_spans: Vec<ObjectSpan>,
     object_parents: Vec<Vec<ObjectId>>,
     object_matrices: Vec<Mat4>,
+    // extra
+    string_interner: StringInterner<string_interner::DefaultBackend>,
 }
 
 impl HierarchyStorage {
@@ -117,10 +121,13 @@ impl HierarchyStorage {
             object_current_frame_dirties: BitVec::with_capacity(1024),
             object_actives: BitVec::with_capacity(1024),
             object_active_selfs: BitVec::with_capacity(1024),
+            object_names: Vec::with_capacity(1024),
 
             object_spans: Vec::with_capacity(1024),
             object_parents: Vec::with_capacity(1024),
             object_matrices: Vec::with_capacity(1024),
+
+            string_interner: StringInterner::default(),
         }
     }
 
@@ -150,6 +157,16 @@ impl HierarchyStorage {
     pub fn is_active_self(&self, object_id: ObjectId) -> bool {
         self.object_active_selfs
             [self.object_spans[object_id.get_zero_based_u32() as usize].index as usize]
+    }
+
+    pub fn name(&self, object_id: ObjectId) -> &str {
+        self.string_interner
+            .resolve(self.object_names[object_id.get_zero_based_u32() as usize])
+            .unwrap()
+    }
+
+    pub fn name_interned(&self, object_id: ObjectId) -> string_interner::DefaultSymbol {
+        self.object_names[object_id.get_zero_based_u32() as usize]
     }
 
     pub fn parent(&self, object_id: ObjectId) -> Option<ObjectId> {
@@ -255,6 +272,14 @@ impl HierarchyStorage {
         }
     }
 
+    pub(crate) fn intern_name(&mut self, str: &str) -> string_interner::DefaultSymbol {
+        self.string_interner.get_or_intern(str)
+    }
+
+    pub(crate) fn set_name(&mut self, object_id: ObjectId, name: &str) {
+        self.object_names[object_id.get_zero_based_u32() as usize] = self.intern_name(name);
+    }
+
     pub(crate) fn reset_dirties(&mut self) {
         self.object_dirties.fill(false);
     }
@@ -284,6 +309,8 @@ impl HierarchyStorage {
         self.object_current_frame_dirties.push(true);
         self.object_actives.push(true);
         self.object_active_selfs.push(true);
+        self.object_names
+            .push(self.string_interner.get_or_intern_static(""));
     }
 
     /// Removes the given object and its children.
@@ -343,6 +370,14 @@ impl HierarchyStorage {
 
         self.object_active_selfs
             .truncate(self.object_active_selfs.len() - span_count);
+
+        if span_index + span_count < self.object_names.len() {
+            self.object_names
+                .copy_within(span_index + span_count.., span_index);
+        }
+
+        self.object_names
+            .truncate(self.object_names.len() - span_count);
     }
 
     /// Sets the parent of the given object and re-order all objects.
@@ -517,6 +552,10 @@ impl HierarchyStorage {
         self.object_active_selfs.copy_within(src.clone(), dest);
         self.object_active_selfs[temp_dest..temp_dest + temp.len()]
             .copy_from_bitslice(&temp_object_active_selfs);
+
+        let temp_object_names = self.object_names[temp.clone()].to_vec();
+        self.object_names.copy_within(src.clone(), dest);
+        self.object_names[temp_dest..temp_dest + temp.len()].copy_from_slice(&temp_object_names);
     }
 }
 

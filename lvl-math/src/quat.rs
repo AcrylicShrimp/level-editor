@@ -23,6 +23,10 @@ impl Quat {
         w: 1.0,
     };
 
+    pub fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
+    }
+
     pub fn from_eular(x: f32, y: f32, z: f32) -> Self {
         let half_x = x * 0.5;
         let half_y = y * 0.5;

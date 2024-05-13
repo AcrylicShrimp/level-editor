@@ -8,6 +8,7 @@ use lvl_resource::{
     PmxModelVertexLayoutElementKind, ResourceFile, ShaderSource, TextureKind, TextureSource,
 };
 use std::{
+    cell::{Ref, RefCell},
     collections::{hash_map::Entry, HashMap},
     mem::size_of,
     ops::Range,
@@ -25,7 +26,7 @@ pub struct PmxModel {
     elements: Vec<PmxModelElement>,
     vertex_layout: PmxModelVertexLayout,
     index_kind: PmxModelIndexKind,
-    morph: Morph,
+    morph: RefCell<Morph>,
 }
 
 impl PmxModel {
@@ -118,13 +119,12 @@ impl PmxModel {
             elements,
             vertex_layout: PmxModelVertexLayout::new(Vec::from(source.vertex_layout())),
             index_kind: source.index_kind(),
-            morph,
+            morph: RefCell::new(morph),
         }
     }
 
-    pub fn set_morph(&mut self, name: &str, coefficient: f32) {
-        self.morph.set_morph(name, coefficient);
-        self.morph.update_material_values(&mut self.elements);
+    pub fn morph(&self) -> Ref<Morph> {
+        self.morph.borrow()
     }
 
     pub fn vertex_buffer(&self) -> &Buffer {
@@ -151,8 +151,10 @@ impl PmxModel {
         self.index_kind
     }
 
-    pub fn morph(&self) -> &Morph {
-        &self.morph
+    pub fn set_morph(&mut self, name: &str, coefficient: f32) {
+        let mut morph = self.morph.borrow_mut();
+        morph.set_morph(name, coefficient);
+        morph.update_material_values(&mut self.elements);
     }
 }
 

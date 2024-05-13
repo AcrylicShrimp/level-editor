@@ -10,6 +10,7 @@ pub struct PmxModelSource {
     index_kind: PmxModelIndexKind,
     elements: Vec<PmxModelElement>,
     morphs: Vec<PmxModelMorph>,
+    bones: Vec<PmxModelBone>,
     vertex_morph_index_texture_name: String,
     uv_morph_index_texture_name: String,
     vertex_displacement_texture_name: String,
@@ -24,6 +25,7 @@ impl PmxModelSource {
         index_kind: PmxModelIndexKind,
         elements: Vec<PmxModelElement>,
         morphs: Vec<PmxModelMorph>,
+        bones: Vec<PmxModelBone>,
         vertex_morph_index_texture_name: String,
         uv_morph_index_texture_name: String,
         vertex_displacement_texture_name: String,
@@ -36,6 +38,7 @@ impl PmxModelSource {
             index_kind,
             elements,
             morphs,
+            bones,
             vertex_morph_index_texture_name,
             uv_morph_index_texture_name,
             vertex_displacement_texture_name,
@@ -65,6 +68,10 @@ impl PmxModelSource {
 
     pub fn morphs(&self) -> &[PmxModelMorph] {
         &self.morphs
+    }
+
+    pub fn bones(&self) -> &[PmxModelBone] {
+        &self.bones
     }
 
     pub fn vertex_morph_index_texture_name(&self) -> &str {
@@ -191,4 +198,59 @@ pub struct PmxModelMorphMaterialElement {
 pub enum PmxModelMorphMaterialOffsetMode {
     Multiply,
     Additive,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PmxModelBone {
+    pub name: String,
+    pub position: Vec3,
+    pub parent_index: Option<u32>,
+    pub layer: u32,
+    pub flags: PmxModelBoneFlags,
+    pub inheritance: Option<PmxModelBoneInheritance>,
+    pub ik: Option<PmxModelBoneIK>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct PmxModelBoneFlags {
+    pub supports_ik: bool,
+    pub inherit_rotation: bool,
+    pub inherit_translation: bool,
+    pub local_coordinate: bool,
+    pub physics_after_deform: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PmxModelBoneInheritance {
+    pub index: u32,
+    pub coefficient: f32,
+    pub inheritance_mode: PmxModelBoneInheritanceMode,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PmxModelBoneInheritanceMode {
+    Both,
+    RotationOnly,
+    TranslationOnly,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PmxModelBoneIK {
+    pub index: u32,
+    pub loop_count: i32,
+    pub limit_angle: f32,
+    pub links: Vec<PmxModelBoneIKLink>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PmxModelBoneIKLink {
+    pub index: u32,
+    pub angle_limit: Option<PmxModelBoneIKAngleLimit>,
+}
+
+/// In radians.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PmxModelBoneIKAngleLimit {
+    pub min: Vec3,
+    pub max: Vec3,
 }

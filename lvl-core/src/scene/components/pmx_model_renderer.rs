@@ -13,9 +13,9 @@ use std::{
 };
 use wgpu::{
     BlendState, ColorTargetState, ColorWrites, CompareFunction, DepthStencilState, Device, Face,
-    FragmentState, FrontFace, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPass,
-    RenderPipeline, RenderPipelineDescriptor, StencilFaceState, StencilState, TextureFormat,
-    VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+    FragmentState, FrontFace, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline,
+    RenderPipelineDescriptor, StencilFaceState, StencilState, TextureFormat, VertexAttribute,
+    VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
 };
 
 #[derive(Debug)]
@@ -167,8 +167,6 @@ impl PmxModelRenderer {
             multiview: None,
         })
     }
-
-    pub(crate) fn render(&self, render_pass: &mut RenderPass) {}
 }
 
 fn shader_input_name_from_vertex_layout_kind(kind: PmxModelVertexLayoutElementKind) -> String {

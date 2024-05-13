@@ -30,11 +30,11 @@ pub struct PmxBone {
     pub parent_index: PmxBoneIndex,
     pub layer: u32,
     pub flags: PmxBoneFlags,
-    pub tail_position: PmxBoneTailPosition,
+    pub tail_position: PmxBoneTailPosition, //
     pub inheritance: Option<PmxBoneInheritance>,
-    pub fixed_axis: Option<PmxBoneFixedAxis>,
-    pub local_coordinate: Option<PmxBoneLocalCoordinate>,
-    pub external_parent: Option<PmxBoneExternalParent>,
+    pub fixed_axis: Option<PmxBoneFixedAxis>,             //
+    pub local_coordinate: Option<PmxBoneLocalCoordinate>, //
+    pub external_parent: Option<PmxBoneExternalParent>,   //
     pub ik: Option<PmxBoneIK>,
 }
 
@@ -175,11 +175,8 @@ pub struct PmxBoneFlags {
     pub inherit_translation: bool,
     /// `true` if this bone's shaft is fixed in a direction otherwise `false`.
     pub fixed_axis: bool,
-    /// Unknown flag.    
     pub local_coordinate: bool,
-    /// Unknown flag.
     pub physics_after_deform: bool,
-    /// Unknown flag.
     pub external_parent_deform: bool,
 }
 

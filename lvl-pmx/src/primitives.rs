@@ -128,12 +128,12 @@ impl Parse for String {
                         .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]])),
                 );
                 let string = String::from_utf16(&chars)?;
-                return Ok(string);
+                Ok(string)
             }
             PmxTextEncoding::Utf8 => {
                 let bytes = cursor.read_dynamic::<RustPrimitiveParseError>(len)?;
                 let string = std::str::from_utf8(bytes)?;
-                return Ok(string.to_owned());
+                Ok(string.to_owned())
             }
         }
     }
