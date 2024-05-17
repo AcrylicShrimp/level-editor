@@ -729,10 +729,10 @@ impl Mul<&Self> for Mat4 {
     }
 }
 
-impl Mul<&Self> for &Mat4 {
+impl Mul<Self> for &Mat4 {
     type Output = Mat4;
 
-    fn mul(self, rhs: &Self) -> Self::Output {
+    fn mul(self, rhs: Self) -> Self::Output {
         Mat4::new([
             self.elements[0] * rhs.elements[0]
                 + self.elements[1] * rhs.elements[4]

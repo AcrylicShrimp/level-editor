@@ -1,9 +1,13 @@
+mod ui;
+
+use self::ui::{broadcast_ui_scaler_dirty, mark_root_ui_scaler_dirty, update_ui};
+
 use super::{
     ComponentIdAllocator, ControllerStorage, EventReceiverStorage, HierarchyStorage,
     ObjectIdAllocator, ObjectStorage, ReadOnlySceneProxy, SceneActionItem, SceneActionResult,
     SceneProxy,
 };
-use crate::context::Context;
+use crate::context::{screen_size::ScreenSize, Context};
 use winit::window::Window;
 
 pub struct Scene<'ctx, 'window: 'ctx> {
@@ -177,12 +181,27 @@ impl<'ctx, 'window: 'ctx> Scene<'ctx, 'window> {
         }
     }
 
-    pub(crate) fn prepare_render(&mut self) {
+    pub(crate) fn prepare_render(&mut self, screen_size: &mut ScreenSize) {
+        if screen_size.is_dirty() {
+            mark_root_ui_scaler_dirty(&self.object_storage, &mut self.hierarchy_storage);
+            screen_size.reset_dirty();
+        }
+
+        broadcast_ui_scaler_dirty(&self.object_storage, &mut self.hierarchy_storage);
+
         self.hierarchy_storage.copy_dirty_to_current_frame();
         self.hierarchy_storage.update_object_matrices(|object_id| {
             self.object_storage
                 .get(object_id)
                 .map(|object| object.transform_matrix())
         });
+
+        let screen_size = screen_size.size();
+        update_ui(
+            &mut self.object_storage,
+            &mut self.hierarchy_storage,
+            screen_size.width,
+            screen_size.height,
+        );
     }
 }

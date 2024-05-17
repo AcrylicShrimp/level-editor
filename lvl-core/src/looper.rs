@@ -152,7 +152,7 @@ impl<'window> Looper<'window> {
 
                 // self.ctx.ui_event_mgr_mut().handle_mouse_move();
 
-                scene.prepare_render();
+                scene.prepare_render(&mut self.ctx.screen_size_mut());
                 phases::render::render(&window, &self.ctx, &mut scene, &mut self.driver);
 
                 self.ctx.input_mut().reset_current_frame_state();
@@ -237,7 +237,7 @@ impl<'window> Looper<'window> {
                 return;
             }
             Event::WindowEvent {
-                event: WindowEvent::ScaleFactorChanged { scale_factor, .. },
+                event: WindowEvent::ScaleFactorChanged { .. },
                 window_id: id,
             } if id == window_id => {
                 target_frame_interval.update_window(window);

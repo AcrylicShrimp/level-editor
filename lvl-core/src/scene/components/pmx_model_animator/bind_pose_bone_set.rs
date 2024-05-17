@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use lvl_math::{Quat, Vec3};
 
 
-pub struct ResetBoneSet {
+pub struct BindPoseBoneSet {
     // bones: HashMap<String, >
 }
 

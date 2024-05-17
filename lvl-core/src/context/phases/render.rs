@@ -41,7 +41,7 @@ pub fn render(
 
     scene.with_proxy(|proxy| {
         for camera_id in get_all_cameras(proxy) {
-            let screen_size = ctx.screen_size();
+            let screen_size = ctx.screen_size().size();
 
             let camera = proxy
                 .find_object_by_id(camera_id)

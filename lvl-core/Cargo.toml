@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 bincode = "1"
 bitvec = "1"
+fontdue = { version = "0.9" }
 lvl-math = { path = "../lvl-math" }
 lvl-resource = { path = "../lvl-resource" }
 parking_lot = "0.12"

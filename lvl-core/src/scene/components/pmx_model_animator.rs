@@ -1,4 +1,4 @@
-mod bone_bind_transform_set;
+mod bind_pose_bone_set;
 mod bone_hierarchy;
 
 use crate::{

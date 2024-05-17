@@ -13,6 +13,14 @@ pub struct Texture {
 }
 
 impl Texture {
+    pub fn new(width: u16, height: u16, handle: wgpu::Texture) -> Self {
+        Self {
+            width,
+            height,
+            handle,
+        }
+    }
+
     pub fn load_from_source(source: &TextureElement, gfx_ctx: &GfxContext) -> Self {
         let handle = gfx_ctx.device.create_texture(&TextureDescriptor {
             label: None,
