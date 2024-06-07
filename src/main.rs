@@ -15,11 +15,12 @@ fn main() {
         resizable: true,
     };
     let looper_mode = LooperMode::Poll;
-    let target_fps = TargetFps::VSync;
+    let target_fps = TargetFps::Unlimited;
 
     launch_core(
         window_config,
-        true,
+        false,
+        4,
         looper_mode,
         target_fps,
         Some(Box::new(DriverImpl::new())),

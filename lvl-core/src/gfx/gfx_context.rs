@@ -35,6 +35,7 @@ impl<'window> GfxContext<'window> {
     pub(crate) async fn new(
         window: &'window Window,
         vsync: bool,
+        msaa_sample_count: u32,
     ) -> Result<Self, GfxContextCreationError> {
         let instance = Instance::new(InstanceDescriptor::default());
         let surface = instance.create_surface(window)?;
@@ -48,7 +49,8 @@ impl<'window> GfxContext<'window> {
             .request_device(
                 &DeviceDescriptor {
                     label: None,
-                    required_features: Features::CLEAR_TEXTURE,
+                    required_features: Features::CLEAR_TEXTURE
+                        | Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
                     required_limits: if cfg!(target_arch = "wasm32") {
                         wgpu::Limits::downlevel_webgl2_defaults()
                     } else {
@@ -86,7 +88,12 @@ impl<'window> GfxContext<'window> {
         });
         surface.configure(&device, &surface_config.borrow());
 
-        let global_texture_set = RefCell::new(GlobalTextureSet::new(&device, window_inner_size));
+        let global_texture_set = RefCell::new(GlobalTextureSet::new(
+            &device,
+            window_inner_size,
+            preferred_format,
+            msaa_sample_count,
+        ));
         let per_frame_buffer_pool = PerFrameBufferPool::new();
         let uniform_bind_group_provider = UniformBindGroupProvider::new(&device);
 

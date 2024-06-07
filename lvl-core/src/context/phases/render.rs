@@ -95,6 +95,7 @@ fn render_pass_stage_opaque(
         scene.transform_matrix(camera_id).unwrap() * Vec4::new(0.0, 0.0, 0.0, 1.0);
 
     let mut commands = Vec::new();
+    let global_texture_set = ctx.gfx_ctx().global_texture_set.borrow();
 
     if let Some(ids) = scene.find_object_ids_by_component_type::<PmxModelRenderer>() {
         let mut renderers_and_distances = Vec::with_capacity(ids.len());
@@ -118,6 +119,7 @@ fn render_pass_stage_opaque(
         for (_, id, renderer) in renderers_and_distances {
             let transform_matrix = scene.transform_matrix(id).unwrap();
             commands.extend(build_render_command_pmx_model_renderer(
+                global_texture_set.msaa_sample_count,
                 transform_matrix,
                 renderer,
                 &InstanceDataProvider,
@@ -126,7 +128,10 @@ fn render_pass_stage_opaque(
         }
     }
 
-    let global_texture_set = ctx.gfx_ctx().global_texture_set.borrow();
+    let color_texture_view = global_texture_set
+        .color
+        .as_ref()
+        .map(|color| &color.texture_view);
     let depth_texture_view = &global_texture_set.depth_stencil.texture_view;
 
     let mut render_pass = frame.begin_render_pass(
@@ -148,11 +153,17 @@ fn render_pass_stage_opaque(
             CameraClearMode::Keep => ClearMode::Keep,
         },
         &[Some(RenderPassTarget {
-            view: &surface_texture_view,
+            view: color_texture_view.unwrap_or(surface_texture_view),
+            resolve_target: if color_texture_view.is_some() {
+                Some(surface_texture_view)
+            } else {
+                None
+            },
             writable: true,
         })],
         Some(RenderPassTarget {
             view: depth_texture_view,
+            resolve_target: None,
             writable: true,
         }),
     );
@@ -178,6 +189,7 @@ fn render_pass_stage_ui(
         },
         &[Some(RenderPassTarget {
             view: &surface_texture_view,
+            resolve_target: None,
             writable: true,
         })],
         None,
@@ -236,16 +248,19 @@ fn _test_render(
                 },
                 &[Some(RenderPassTarget {
                     view: &surface_texture_view,
+                    resolve_target: None,
                     writable: true,
                 })],
                 Some(RenderPassTarget {
                     view: depth_texture_view,
+                    resolve_target: None,
                     writable: true,
                 }),
             );
 
             for renderer in &pmx_model_renderers {
                 let pipelines = renderer.component.construct_render_pipelines(
+                    global_texture_set.msaa_sample_count,
                     InstanceDataProvider.instance_data_size(),
                     InstanceDataProvider.instance_data_attributes(),
                     ctx.gfx_ctx(),

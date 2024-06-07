@@ -73,10 +73,6 @@ fn vs_main(instance: InstanceInput, vertex: VertexInput) -> VertexOutput {
     let morph_index = textureLoad(vertex_morph_index_texture, morph_index_uv, 0);
     let coefficient = morph_coefficients[morph_index.x];
 
-    if (coefficient < 0.001) {
-      continue;
-    }
-
     let displacement_uv_base = morph_index.y;
     let displacement_uv = vec2<u32>(
       displacement_uv_base % vertex_displacement_texture_size,
@@ -100,10 +96,6 @@ fn vs_main(instance: InstanceInput, vertex: VertexInput) -> VertexOutput {
     let morph_index = textureLoad(uv_morph_index_texture, morph_index_uv, 0);
     let coefficient = morph_coefficients[morph_index.y];
     
-    if (coefficient < 0.001) {
-      continue;
-    }
-
     let displacement_uv_base = morph_index.z;
     let displacement_uv = vec2<u32>(
       displacement_uv_base % uv_displacement_texture_size,

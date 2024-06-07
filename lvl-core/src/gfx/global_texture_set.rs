@@ -5,23 +5,48 @@ use wgpu::{
 use winit::dpi::PhysicalSize;
 
 pub struct GlobalTextureSet {
+    pub msaa_sample_count: u32,
+    pub color: Option<TextureSet>,
     pub depth_stencil: TextureSet,
 }
 
 impl GlobalTextureSet {
-    pub(crate) fn new(device: &Device, size: PhysicalSize<u32>) -> Self {
+    pub(crate) fn new(
+        device: &Device,
+        size: PhysicalSize<u32>,
+        color_texture_format: TextureFormat,
+        msaa_sample_count: u32,
+    ) -> Self {
         Self {
+            msaa_sample_count,
+            color: if msaa_sample_count == 1 {
+                None
+            } else {
+                Some(TextureSet::new(
+                    device,
+                    "color",
+                    size,
+                    color_texture_format,
+                    TextureUsages::RENDER_ATTACHMENT,
+                    msaa_sample_count,
+                ))
+            },
             depth_stencil: TextureSet::new(
                 device,
                 "depth stencil",
                 size,
                 TextureFormat::Depth32Float,
                 TextureUsages::RENDER_ATTACHMENT,
+                msaa_sample_count,
             ),
         }
     }
 
     pub(crate) fn resize(&mut self, device: &Device, size: PhysicalSize<u32>) {
+        if let Some(color) = &mut self.color {
+            color.resize(device, size);
+        }
+
         self.depth_stencil.resize(device, size);
     }
 }
@@ -32,6 +57,7 @@ pub struct TextureSet {
     name: String,
     format: TextureFormat,
     usage: TextureUsages,
+    sample_count: u32,
 }
 
 impl TextureSet {
@@ -41,10 +67,11 @@ impl TextureSet {
         size: PhysicalSize<u32>,
         format: TextureFormat,
         usage: TextureUsages,
+        sample_count: u32,
     ) -> Self {
         let name = name.into();
         let (texture, texture_view) =
-            Self::create_texture_and_view(device, name.as_str(), size, format, usage);
+            Self::create_texture_and_view(device, name.as_str(), size, format, usage, sample_count);
 
         Self {
             texture,
@@ -52,6 +79,7 @@ impl TextureSet {
             name,
             format,
             usage,
+            sample_count,
         }
     }
 
@@ -62,6 +90,7 @@ impl TextureSet {
             size,
             self.format,
             self.usage,
+            self.sample_count,
         );
 
         self.texture = texture;
@@ -74,6 +103,7 @@ impl TextureSet {
         size: PhysicalSize<u32>,
         format: TextureFormat,
         usage: TextureUsages,
+        sample_count: u32,
     ) -> (Texture, TextureView) {
         let texture = device.create_texture(&TextureDescriptor {
             label: Some(&name),
@@ -83,7 +113,7 @@ impl TextureSet {
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
-            sample_count: 1,
+            sample_count,
             dimension: TextureDimension::D2,
             format,
             usage,

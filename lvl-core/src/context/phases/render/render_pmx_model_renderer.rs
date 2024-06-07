@@ -8,8 +8,9 @@ use lvl_resource::PmxModelIndexKind;
 use wgpu::IndexFormat;
 
 pub fn build_render_command_pmx_model_renderer<'r>(
+    msaa_sample_count: u32,
     transform_matrix: &Mat4,
-    renderer: &'r PmxModelRenderer,
+renderer: &'r PmxModelRenderer,
     instance_data_provider: &InstanceDataProvider,
     gfx_ctx: &GfxContext,
 ) -> Vec<RenderCommand<'r>> {
@@ -24,6 +25,7 @@ pub fn build_render_command_pmx_model_renderer<'r>(
     model.morph().update_coefficients(&gfx_ctx.queue);
 
     let render_pipelines = renderer.construct_render_pipelines(
+        msaa_sample_count,
         instance_data_provider.instance_data_size(),
         instance_data_provider.instance_data_attributes(),
         gfx_ctx,

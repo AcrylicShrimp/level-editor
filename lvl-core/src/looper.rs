@@ -80,10 +80,11 @@ impl<'window> Looper<'window> {
     pub async fn new(
         window: &'window Window,
         vsync: bool,
+        msaa_sample_count: u32,
         driver: Option<Box<dyn Driver>>,
     ) -> Result<Self, LooperCreationError> {
         let physical_size = window.inner_size();
-        let gfx_ctx = GfxContext::new(window, vsync).await?;
+        let gfx_ctx = GfxContext::new(window, vsync, msaa_sample_count).await?;
         let ctx = Context::new(gfx_ctx, physical_size);
         Ok(Self { ctx, driver })
     }

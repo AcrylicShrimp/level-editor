@@ -13,9 +13,9 @@ use std::{
 };
 use wgpu::{
     BlendState, ColorTargetState, ColorWrites, CompareFunction, DepthStencilState, Device, Face,
-    FragmentState, FrontFace, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline,
-    RenderPipelineDescriptor, StencilFaceState, StencilState, TextureFormat, VertexAttribute,
-    VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+    FragmentState, FrontFace, MultisampleState, PolygonMode, PrimitiveState, PrimitiveTopology,
+    RenderPipeline, RenderPipelineDescriptor, StencilFaceState, StencilState, TextureFormat,
+    VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
 };
 
 #[derive(Debug)]
@@ -43,6 +43,7 @@ impl PmxModelRenderer {
 
     pub(crate) fn construct_render_pipelines(
         &self,
+        msaa_sample_count: u32,
         instance_data_size: u64,
         instance_data_attributes: &[VertexAttribute],
         gfx_ctx: &GfxContext,
@@ -55,6 +56,7 @@ impl PmxModelRenderer {
 
         for element in self.model.elements() {
             let render_pipeline = self.create_render_pipeline(
+                msaa_sample_count,
                 instance_data_size,
                 instance_data_attributes,
                 &self.model.vertex_layout(),
@@ -70,6 +72,7 @@ impl PmxModelRenderer {
 
     fn create_render_pipeline(
         &self,
+        msaa_sample_count: u32,
         instance_data_size: u64,
         instance_data_attributes: &[VertexAttribute],
         layout: &PmxModelVertexLayout,
@@ -153,7 +156,11 @@ impl PmxModelRenderer {
                 },
                 bias: Default::default(),
             }),
-            multisample: Default::default(),
+            multisample: MultisampleState {
+                count: msaa_sample_count,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
             fragment: Some(FragmentState {
                 module: shader.module(),
                 entry_point: &shader.reflection().fragment_entry_point,

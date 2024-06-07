@@ -53,7 +53,7 @@ pub fn make_pmx_model_renderer(
         );
         element.material.set_property(
             "light_direction",
-            MaterialPropertyValue::Vec3(Vec3::new(1.0, -1.0, 1.0).normalized()),
+            MaterialPropertyValue::Vec3(Vec3::new(1.0, -1.0, -1.0).normalized()),
         );
     }
 

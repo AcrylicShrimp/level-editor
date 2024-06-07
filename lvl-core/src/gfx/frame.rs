@@ -21,6 +21,7 @@ pub enum ClearMode {
 #[derive(Debug)]
 pub struct RenderPassTarget<'tex> {
     pub view: &'tex TextureView,
+    pub resolve_target: Option<&'tex TextureView>,
     pub writable: bool,
 }
 
@@ -48,7 +49,7 @@ impl Frame {
             .map(|target| {
                 target.as_ref().map(|t| RenderPassColorAttachment {
                     view: t.view,
-                    resolve_target: None,
+                    resolve_target: t.resolve_target,
                     ops: Operations {
                         load: match clear_mode {
                             ClearMode::Keep => LoadOp::Load,
