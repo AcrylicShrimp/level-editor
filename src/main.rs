@@ -19,6 +19,7 @@ fn main() {
 
     launch_core(
         window_config,
+        true,
         looper_mode,
         target_fps,
         Some(Box::new(DriverImpl::new())),

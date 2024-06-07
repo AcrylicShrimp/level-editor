@@ -1449,6 +1449,7 @@ fn make_texture_source(
             sampling_mode: Some(TextureElementSamplingMode::Bilinear),
             wrapping_mode_u: Some(TextureElementWrappingMode::Clamp),
             wrapping_mode_v: Some(TextureElementWrappingMode::Clamp),
+            sprites: None,
         },
     )
 }
@@ -1474,6 +1475,7 @@ fn make_internal_toon_texture_source(
             sampling_mode: Some(TextureElementSamplingMode::Bilinear),
             wrapping_mode_u: Some(TextureElementWrappingMode::Clamp),
             wrapping_mode_v: Some(TextureElementWrappingMode::Clamp),
+            sprites: None,
         },
     )
 }

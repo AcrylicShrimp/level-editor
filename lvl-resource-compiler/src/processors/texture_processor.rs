@@ -2,11 +2,12 @@ use super::Processor;
 use anyhow::{anyhow, Error as AnyError};
 use image::io::Reader as ImageReader;
 use lvl_resource::{
-    Resource, ResourceKind, TextureElement, TextureElementSamplingMode, TextureElementSize,
-    TextureElementTextureFormat, TextureElementWrappingMode, TextureKind, TextureSource,
+    Resource, ResourceKind, SpriteMapping, SpriteSource, TextureElement,
+    TextureElementSamplingMode, TextureElementSize, TextureElementTextureFormat,
+    TextureElementWrappingMode, TextureKind, TextureSource,
 };
 use serde::Deserialize;
-use std::path::Path;
+use std::{collections::BTreeMap, path::Path};
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct TextureMetadata {
@@ -14,6 +15,15 @@ pub struct TextureMetadata {
     pub sampling_mode: Option<TextureElementSamplingMode>,
     pub wrapping_mode_u: Option<TextureElementWrappingMode>,
     pub wrapping_mode_v: Option<TextureElementWrappingMode>,
+    pub sprites: Option<BTreeMap<String, TextureSpriteElement>>,
+}
+
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq, Hash)]
+pub struct TextureSpriteElement {
+    pub min_x: u16,
+    pub min_y: u16,
+    pub max_x: u16,
+    pub max_y: u16,
 }
 
 pub struct TextureProcessor;
@@ -54,11 +64,31 @@ impl Processor for TextureProcessor {
             }
         };
         let source = Self::generate_texture_source(file, metadata)?;
+        let mut resources =
+            Vec::with_capacity(1 + metadata.sprites.as_ref().map_or(0, |sprites| sprites.len()));
 
-        Ok(vec![Resource {
-            name,
+        resources.push(Resource {
+            name: name.clone(),
             kind: ResourceKind::Texture(source),
-        }])
+        });
+
+        if let Some(sprites) = &metadata.sprites {
+            for (sprite_name, mapping) in sprites {
+                let source = SpriteSource::new(
+                    name.clone(),
+                    SpriteMapping {
+                        min: (mapping.min_x, mapping.min_y),
+                        max: (mapping.max_x, mapping.max_y),
+                    },
+                );
+                resources.push(Resource {
+                    name: format!("{}/{}", name, sprite_name),
+                    kind: ResourceKind::Sprite(source),
+                });
+            }
+        }
+
+        Ok(resources)
     }
 }
 

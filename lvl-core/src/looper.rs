@@ -5,9 +5,13 @@ use crate::{
     context::{driver::Driver, phases, Context},
     gfx::GfxContext,
     looper::vsync::TargetFrameInterval,
+    perf::PerfRecorder,
     scene::Scene,
 };
-use std::{num::NonZeroU32, time::Instant};
+use std::{
+    num::NonZeroU32,
+    time::{Duration, Instant},
+};
 use thiserror::Error;
 use wgpu::MaintainBase;
 use winit::{
@@ -75,10 +79,11 @@ pub struct LooperConfig {
 impl<'window> Looper<'window> {
     pub async fn new(
         window: &'window Window,
+        vsync: bool,
         driver: Option<Box<dyn Driver>>,
     ) -> Result<Self, LooperCreationError> {
         let physical_size = window.inner_size();
-        let gfx_ctx = GfxContext::new(window).await?;
+        let gfx_ctx = GfxContext::new(window, vsync).await?;
         let ctx = Context::new(gfx_ctx, physical_size);
         Ok(Self { ctx, driver })
     }
@@ -90,7 +95,6 @@ impl<'window> Looper<'window> {
         looper_mode: LooperMode,
         target_fps: TargetFps,
     ) -> Result<(), LooperError> {
-        // TODO: perform pre-init
         event_loop.set_control_flow(match looper_mode {
             LooperMode::Wait => ControlFlow::Wait,
             LooperMode::Poll => ControlFlow::Poll,
@@ -110,6 +114,8 @@ impl<'window> Looper<'window> {
         );
         let mut last_frame_time = Instant::now();
         let mut scene = Scene::new(&self.ctx, window);
+        let mut perf_recorder = PerfRecorder::new("main");
+        let mut last_perf_report_time = Instant::now();
 
         self.driver
             .as_mut()
@@ -127,6 +133,7 @@ impl<'window> Looper<'window> {
             } if id == window_id => {
                 let now = Instant::now();
 
+                #[cfg(target_os = "macos")]
                 if looper_mode == LooperMode::Poll
                     && now - last_frame_time < target_frame_interval.interval()
                 {
@@ -136,24 +143,29 @@ impl<'window> Looper<'window> {
                 last_frame_time = now;
                 self.ctx.time_mut().update();
 
+                perf_recorder.frame_begin();
+
                 // {
                 //     let mut input_mgr = self.ctx.input_mgr_mut();
                 //     input_mgr.poll();
                 // }
 
                 phases::update::update(&window, &self.ctx, &mut scene, &mut self.driver);
+                perf_recorder.frame_update_end();
+
                 phases::late_update::late_update(&window, &self.ctx, &mut scene, &mut self.driver);
-                // self.ctx.event_mgr().dispatch(&event_types::Update);
-
-                // make_ui_scaler_dirty.run_now(&self.ctx.world());
-                // update_ui_scaler.run_now(&self.ctx.world());
-                // update_ui_element.run_now(&self.ctx.world());
-                // update_ui_raycast_grid.run_now(&self.ctx.world());
-
-                // self.ctx.ui_event_mgr_mut().handle_mouse_move();
+                perf_recorder.frame_late_update_end();
 
                 scene.prepare_render(&mut self.ctx.screen_size_mut());
+                perf_recorder.frame_prepare_render_end();
+
                 phases::render::render(&window, &self.ctx, &mut scene, &mut self.driver);
+                perf_recorder.frame_render_end();
+
+                if Duration::from_secs(1) <= now - last_perf_report_time {
+                    println!("{}", perf_recorder.report());
+                    last_perf_report_time = now;
+                }
 
                 self.ctx.input_mut().reset_current_frame_state();
 

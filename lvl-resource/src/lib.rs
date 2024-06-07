@@ -4,6 +4,7 @@ mod model_source;
 mod pmx_model_animation_source;
 mod pmx_model_source;
 mod shader_source;
+mod sprite_source;
 mod texture_source;
 
 pub use material_source::*;
@@ -12,6 +13,7 @@ pub use model_source::*;
 pub use pmx_model_animation_source::*;
 pub use pmx_model_source::*;
 pub use shader_source::*;
+pub use sprite_source::*;
 pub use texture_source::*;
 
 use serde::{Deserialize, Serialize};
@@ -87,6 +89,7 @@ pub enum ResourceKind {
     PmxModel(PmxModelSource),
     PmxModelAnimation(PmxModelAnimationSource),
     Shader(ShaderSource),
+    Sprite(SpriteSource),
     Texture(TextureSource),
 }
 
@@ -129,6 +132,13 @@ impl ResourceKind {
     pub fn as_shader_source(&self) -> Option<&ShaderSource> {
         match self {
             Self::Shader(shader) => Some(shader),
+            _ => None,
+        }
+    }
+
+    pub fn as_sprite_source(&self) -> Option<&SpriteSource> {
+        match self {
+            Self::Sprite(sprite) => Some(sprite),
             _ => None,
         }
     }

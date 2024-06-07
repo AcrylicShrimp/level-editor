@@ -3,8 +3,8 @@ use std::cell::RefCell;
 use thiserror::Error;
 use wgpu::{
     Adapter, Backend, Backends, CommandEncoderDescriptor, Device, DeviceDescriptor, DeviceType,
-    Features, Instance, InstanceDescriptor, MaintainBase, Queue, Surface, SurfaceConfiguration,
-    SurfaceError, SurfaceTexture, TextureUsages,
+    Features, Instance, InstanceDescriptor, MaintainBase, PresentMode, Queue, Surface,
+    SurfaceConfiguration, SurfaceError, SurfaceTexture, TextureUsages,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -32,7 +32,10 @@ pub struct GfxContext<'window> {
 }
 
 impl<'window> GfxContext<'window> {
-    pub(crate) async fn new(window: &'window Window) -> Result<Self, GfxContextCreationError> {
+    pub(crate) async fn new(
+        window: &'window Window,
+        vsync: bool,
+    ) -> Result<Self, GfxContextCreationError> {
         let instance = Instance::new(InstanceDescriptor::default());
         let surface = instance.create_surface(window)?;
         let adapters = instance.enumerate_adapters(Backends::all());
@@ -61,10 +64,6 @@ impl<'window> GfxContext<'window> {
             Some(format) => *format,
             None => return Err(GfxContextCreationError::SurfaceNotSupported),
         };
-        let preferred_present_mode = match adapter_surface_caps.present_modes.first() {
-            Some(mode) => *mode,
-            None => return Err(GfxContextCreationError::SurfaceNotSupported),
-        };
         let preferred_alpha_mode = match adapter_surface_caps.alpha_modes.first() {
             Some(mode) => *mode,
             None => return Err(GfxContextCreationError::SurfaceNotSupported),
@@ -76,7 +75,11 @@ impl<'window> GfxContext<'window> {
             format: preferred_format,
             width: window_inner_size.width,
             height: window_inner_size.height,
-            present_mode: preferred_present_mode,
+            present_mode: if vsync {
+                PresentMode::AutoVsync
+            } else {
+                PresentMode::AutoNoVsync
+            },
             desired_maximum_frame_latency: 2,
             alpha_mode: preferred_alpha_mode,
             view_formats: vec![],
