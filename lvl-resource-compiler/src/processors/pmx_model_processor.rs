@@ -891,7 +891,7 @@ fn make_vertex_data(
         // normal
         write!(write, pmx_vertex.normal.x);
         write!(write, pmx_vertex.normal.y);
-        write!(write, pmx_vertex.normal.z);
+        write!(write, -pmx_vertex.normal.z);
 
         // texcoord
         write!(write, pmx_vertex.uv.x);
