@@ -2,7 +2,7 @@ use lvl_resource::SpriteSource;
 use std::sync::Arc;
 use wgpu::TextureView;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Sprite {
     texture: Arc<TextureView>,
     mapping: SpriteMapping,

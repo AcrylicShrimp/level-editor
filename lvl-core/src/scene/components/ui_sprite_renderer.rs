@@ -1,6 +1,7 @@
 use crate::{gfx::elements::Sprite, scene::Component};
 use std::any::Any;
 
+#[derive(Debug)]
 pub struct UISpriteRenderer {
     pub sprite: Sprite,
 }

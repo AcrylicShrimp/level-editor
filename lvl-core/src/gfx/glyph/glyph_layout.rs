@@ -43,6 +43,56 @@ pub struct GlyphLayoutElement {
     pub key: GlyphRasterConfig,
 }
 
+// TODO: Add vertical align: baseline.
+pub fn compute_glyph_layout(
+    font: &Font,
+    font_size: f32,
+    element_size: Vec2,
+    config: &GlyphLayoutConfig,
+    mut chars: impl Iterator<Item = char>,
+) -> Vec<GlyphLayoutElement> {
+    let pixel_ratio = font_size / font.sdf_font_size();
+    let inset = pixel_ratio * font.sdf_inset() as f32;
+
+    let mut lines = Vec::with_capacity(4);
+
+    loop {
+        let line = compute_glyph_line_layout(font, font_size, inset, &mut chars);
+
+        if line.elements.is_empty() {
+            break;
+        }
+
+        lines.push(line);
+    }
+
+    let total_height = font_size * lines.len() as f32;
+    let vertical_offset = match config.vertical_align {
+        VerticalAlign::Top => element_size.y - total_height,
+        VerticalAlign::Middle => (element_size.y - total_height) * 0.5,
+        VerticalAlign::Bottom => 0f32,
+    };
+    let line_count = lines.len();
+
+    for (index, line) in lines.iter_mut().enumerate() {
+        let horizontal_offset = match config.horizontal_align {
+            HorizontalAlign::Left => 0f32,
+            HorizontalAlign::Center => (element_size.x - line.width) * 0.5,
+            HorizontalAlign::Right => element_size.x - line.width,
+        };
+
+        let lines_below = line_count - index - 1;
+        let vertical_offset = vertical_offset + font_size * lines_below as f32;
+
+        for element in line.elements.iter_mut() {
+            element.offset.x += horizontal_offset;
+            element.offset.y += vertical_offset;
+        }
+    }
+
+    lines.into_iter().flat_map(|line| line.elements).collect()
+}
+
 struct GlyphLineLayout {
     pub width: f32,
     pub elements: Vec<GlyphLayoutElement>,
